@@ -87,7 +87,7 @@ window.OKXActions = (() => {
     // Size cell format: "-0.0100 BTC" (negative=short) or "0.0100 BTC" (positive=long)
     for (const cell of cells) {
       const text = cell.textContent.trim();
-      const match = text.match(/^([-+]?[\d,]+\.?\d*)\s*(BTC|ETH|SOL|XRP|DOGE|Cont)/i);
+      const match = text.match(/^([-+]?[\d,]+\.?\d*)\s+([A-Za-z]{2,6})\s*$/);
       if (match) {
         const rawSize = parseFloat(match[1].replace(/,/g, ''));
         if (!isNaN(rawSize) && rawSize !== 0) {
