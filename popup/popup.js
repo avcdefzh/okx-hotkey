@@ -272,9 +272,9 @@ function renderActionCard(action) {
   ticksInput.type = 'number';
   ticksInput.className = 'ticks-input';
   ticksInput.min = 1;
-  ticksInput.max = 100;
+  ticksInput.max = 1000;
   ticksInput.step = 1;
-  ticksInput.value = typeDef.hasTicks ? (action.ticks || 1) : 1;
+  ticksInput.value = typeDef.hasTicks ? (action.ticks || 100) : 1;
 
   const ticksUnit = document.createElement('span');
   ticksUnit.className = 'ticks-unit';
@@ -479,7 +479,7 @@ function addAction(typeDef) {
     label:      typeDef.label,
     hotkey:     { key: '', ctrl: false, shift: false, alt: false },
     percentage: typeDef.hasPct ? 5 : 0,
-    ticks:      typeDef.hasTicks ? 1 : 0,
+    ticks:      typeDef.hasTicks ? 100 : 0,
     sound:           null,
     soundName:       null,
     soundAdd:        null,
@@ -562,7 +562,7 @@ function collectActions() {
 
     const ticksInput = card.querySelector('.ticks-input');
     const rawTicks = ticksInput ? (parseInt(ticksInput.value, 10) || 1) : 0;
-    const ticks = actionTypeDef.hasTicks ? Math.max(1, Math.min(100, rawTicks)) : 0;
+    const ticks = actionTypeDef.hasTicks ? Math.max(1, Math.min(1000, rawTicks)) : 0;
 
     return {
       id:        id,

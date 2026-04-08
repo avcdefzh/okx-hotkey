@@ -221,7 +221,7 @@
         pageType:    detectorState.pageType,
         tradingMode: detectorState.tradingMode,
         percentage:  action.percentage,
-        ticks:       action.ticks || 1,
+        ticks:       action.ticks || 100,
         seedCap:     settings.general.seedCap || 0
       };
 
