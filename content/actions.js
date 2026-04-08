@@ -161,7 +161,8 @@ window.OKXActions = (() => {
 
     let amount;
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: always open long, no position detection
+      // Hedge: switch to Open tab first so max-asset balance is visible
+      await E.selectDirection('open_long', ctx.tradingMode);
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
@@ -187,9 +188,7 @@ window.OKXActions = (() => {
 
     await E.selectMarketOrder();
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_long', ctx.tradingMode);
-    } else {
+    if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
 
@@ -207,7 +206,8 @@ window.OKXActions = (() => {
 
     let amount;
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: always open short, no position detection
+      // Hedge: switch to Open tab first so max-asset balance is visible
+      await E.selectDirection('open_short', ctx.tradingMode);
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
@@ -233,9 +233,7 @@ window.OKXActions = (() => {
 
     await E.selectMarketOrder();
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_short', ctx.tradingMode);
-    } else {
+    if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
 
@@ -253,7 +251,8 @@ window.OKXActions = (() => {
 
     let amount;
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: always open long, no position detection
+      // Hedge: switch to Open tab first so max-asset balance is visible
+      await E.selectDirection('open_long', ctx.tradingMode);
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
@@ -279,9 +278,7 @@ window.OKXActions = (() => {
 
     await E.selectLimitOrder();
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_long', ctx.tradingMode);
-    } else {
+    if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
 
@@ -299,7 +296,8 @@ window.OKXActions = (() => {
 
     let amount;
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: always open short, no position detection
+      // Hedge: switch to Open tab first so max-asset balance is visible
+      await E.selectDirection('open_short', ctx.tradingMode);
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
@@ -325,9 +323,7 @@ window.OKXActions = (() => {
 
     await E.selectLimitOrder();
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_short', ctx.tradingMode);
-    } else {
+    if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
 
@@ -345,7 +341,8 @@ window.OKXActions = (() => {
 
     let amount;
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: always open long, no position detection
+      // Hedge: switch to Open tab first so max-asset balance is visible
+      await E.selectDirection('open_long', ctx.tradingMode);
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
@@ -378,9 +375,7 @@ window.OKXActions = (() => {
 
     await E.selectLimitOrder();
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_long', ctx.tradingMode);
-    } else {
+    if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
 
@@ -399,7 +394,8 @@ window.OKXActions = (() => {
 
     let amount;
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: always open short, no position detection
+      // Hedge: switch to Open tab first so max-asset balance is visible
+      await E.selectDirection('open_short', ctx.tradingMode);
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
@@ -432,9 +428,7 @@ window.OKXActions = (() => {
 
     await E.selectLimitOrder();
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_short', ctx.tradingMode);
-    } else {
+    if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
 
