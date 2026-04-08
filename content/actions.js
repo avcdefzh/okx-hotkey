@@ -456,13 +456,8 @@ window.OKXActions = (() => {
 
     await E.selectMarketOrder();
 
-    if (ctx.tradingMode === 'hedge') {
-      const dir = pos.direction === 'long' ? 'close_long' : 'close_short';
-      await E.selectDirection(dir, ctx.tradingMode);
-    } else {
-      const dir = pos.direction === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(dir, ctx.tradingMode);
-    }
+    const dir = pos.direction === 'long' ? 'sell' : 'buy';
+    await E.selectDirection(dir, ctx.tradingMode);
 
     await E.fillAmount(pos.size);
 
@@ -635,8 +630,8 @@ window.OKXActions = (() => {
     const amount = calcAmount(pos.size, ctx.percentage);
     if (amount <= 0) throw new Error('Calculated amount is 0');
 
-    await E.selectDirection('close_long', ctx.tradingMode);
     await E.selectMarketOrder();
+    await E.selectDirection('close_long', ctx.tradingMode);
     await E.fillAmount(amount);
     await E.submitSell();
     return `롱 시장가 청산 ${ctx.percentage}%`;
@@ -657,8 +652,8 @@ window.OKXActions = (() => {
     const amount = calcAmount(pos.size, ctx.percentage);
     if (amount <= 0) throw new Error('Calculated amount is 0');
 
-    await E.selectDirection('close_long', ctx.tradingMode);
     await E.selectLimitOrder();
+    await E.selectDirection('close_long', ctx.tradingMode);
     // Don't fill price — leave as-is (user may have set it manually)
     await E.fillAmount(amount);
     await E.submitSell();
@@ -680,8 +675,8 @@ window.OKXActions = (() => {
     const amount = calcAmount(pos.size, ctx.percentage);
     if (amount <= 0) throw new Error('Calculated amount is 0');
 
-    await E.selectDirection('close_short', ctx.tradingMode);
     await E.selectMarketOrder();
+    await E.selectDirection('close_short', ctx.tradingMode);
     await E.fillAmount(amount);
     await E.submitBuy();
     return `숏 시장가 청산 ${ctx.percentage}%`;
@@ -702,8 +697,8 @@ window.OKXActions = (() => {
     const amount = calcAmount(pos.size, ctx.percentage);
     if (amount <= 0) throw new Error('Calculated amount is 0');
 
-    await E.selectDirection('close_short', ctx.tradingMode);
     await E.selectLimitOrder();
+    await E.selectDirection('close_short', ctx.tradingMode);
     await E.fillAmount(amount);
     await E.submitBuy();
     return `숏 지정가 청산 ${ctx.percentage}%`;
