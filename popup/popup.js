@@ -28,8 +28,12 @@ const ACTION_TYPES = [
   { type: 'CLOSE_ALL',     label: '전체 청산',        hasPct: false },
   { type: 'FLIP',          label: '포지션 반전',      hasPct: false },
   { type: 'CANCEL_LAST',   label: '마지막 주문 취소', hasPct: false },
-  { type: 'CANCEL_ALL',    label: '전체 주문 취소',   hasPct: false },
-  { type: 'CHASE_ORDER',   label: '주문 체이스',      hasPct: false },
+  { type: 'CANCEL_ALL',         label: '전체 주문 취소',   hasPct: false },
+  { type: 'CHASE_ORDER',        label: '주문 체이스',      hasPct: false },
+  { type: 'CLOSE_LONG_MARKET',  label: '롱 시장가 청산',   hasPct: true  },
+  { type: 'CLOSE_LONG_LIMIT',   label: '롱 지정가 청산',   hasPct: true  },
+  { type: 'CLOSE_SHORT_MARKET', label: '숏 시장가 청산',   hasPct: true  },
+  { type: 'CLOSE_SHORT_LIMIT',  label: '숏 지정가 청산',   hasPct: true  },
 ];
 
 const DEFAULT_GENERAL = {

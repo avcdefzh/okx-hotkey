@@ -38,8 +38,11 @@ window.OKXDetector = (() => {
    * @returns {'hedge'|'one-way'|'unknown'}
    */
   function detectTradingMode() {
-    // Check for hedge mode: segmented Open/Close tabs
-    const segmentedTabs = document.querySelectorAll(S.directionTab);
+    // Scope all checks to the order form to avoid false matches in other panels
+    const form = document.querySelector(S.orderForm);
+
+    // Check for hedge mode: segmented Open/Close tabs inside the order form
+    const segmentedTabs = form ? form.querySelectorAll(S.directionTab) : [];
     if (segmentedTabs.length > 0) {
       for (const tab of segmentedTabs) {
         const text = tab.textContent.trim().toLowerCase();
@@ -47,8 +50,7 @@ window.OKXDetector = (() => {
       }
     }
 
-    // Check for one-way mode: Buy/Sell submit buttons exist
-    const form = document.querySelector(S.orderForm);
+    // Check for one-way mode: Buy/Sell submit buttons exist in the order form
     if (form) {
       const buyBtn = form.querySelector(S.submitBuy);
       const sellBtn = form.querySelector(S.submitSell);

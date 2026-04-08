@@ -342,11 +342,17 @@
 
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       if (msg.type === 'GET_STATUS') {
-        sendResponse({
-          ready:       detectorState.ready,
-          pageType:    detectorState.pageType,
-          tradingMode: detectorState.tradingMode
-        });
+        const fresh = OKXDetector.getState();
+        // Use fresh detection, fall back to cached if fresh returns unknown
+        // (handles React re-render transitions where form temporarily disappears)
+        const result = {
+          ready:       fresh.ready || detectorState.ready,
+          pageType:    fresh.pageType !== 'unknown' ? fresh.pageType : detectorState.pageType,
+          tradingMode: fresh.tradingMode !== 'unknown' ? fresh.tradingMode : detectorState.tradingMode
+        };
+        // Update cache if fresh detection succeeded
+        if (fresh.tradingMode !== 'unknown') detectorState = fresh;
+        sendResponse(result);
       }
       return false;
     });

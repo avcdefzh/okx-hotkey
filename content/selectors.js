@@ -79,4 +79,10 @@ window.OKX_SELECTORS = {
   // .order-table-box is for open orders only. aria-hidden="true" rows are hidden measure
   // rows used for column sizing — must be excluded or rows[0] returns a blank measure row.
   positionRow: '.position-box .okui-table-row:not([aria-hidden="true"])',
+
+  // ── HEDGE MODE DIRECTION INDICATORS ─────────────────────────────────────
+  // Verified: In hedge mode position table, cell[1] (Size) contains a span
+  // with positive-pl (long) or negative-pl (short) class
+  positionLongClass: '.positive-pl',
+  positionShortClass: '.negative-pl',
 };

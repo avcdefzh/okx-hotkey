@@ -79,10 +79,16 @@ window.OKXActions = (() => {
   /**
    * Read position data with automatic tab switching.
    * Quick path: checks "Open positions (N)" tab text — if N=0, returns immediately (no tab switch).
-   * Slow path: switches to positions tab, parses first row, returns size + direction.
+   * Slow path: switches to positions tab, parses rows, returns size + direction.
+   *
+   * In hedge mode, direction is determined by the positive-pl / negative-pl span class
+   * on cell[1] (Size column). Size values are always positive in hedge mode.
+   * In one-way mode, direction is determined by the sign of the size value.
+   *
+   * @param {'long'|'short'|undefined} direction — optional filter; returns only matching row
    * @returns {Promise<{size: number, direction: 'long'|'short'|null}>}
    */
-  async function getPosition() {
+  async function getPosition(direction) {
     // Quick check: position count from tab text (no tab switching needed)
     const tabs = document.querySelectorAll('[role="tab"]');
     let posCount = 0;
@@ -93,7 +99,7 @@ window.OKXActions = (() => {
         break;
       }
     }
-    console.log('[OKX Hotkey] getPosition: posCount =', posCount);
+    console.log('[OKX Hotkey] getPosition: posCount =', posCount, 'filter =', direction);
     if (posCount === 0) return { size: 0, direction: null };
 
     // Position exists — switch to positions tab and read
@@ -106,27 +112,43 @@ window.OKXActions = (() => {
     console.log('[OKX Hotkey] getPosition: rows found =', rows.length);
     if (!rows.length) return { size: 0, direction: null };
 
-    const row = rows[0];
-    const cells = [...row.querySelectorAll('td')];
+    for (const row of rows) {
+      const cells = [...row.querySelectorAll('td')];
 
-    // Iterate ALL cells to find Size — column order is user-customizable on OKX
-    // Size cell format: "-0.0100 BTC" (negative=short) or "0.0100 BTC" (positive=long)
-    for (const cell of cells) {
-      const text = cell.textContent.trim();
-      const match = text.match(/^([-+]?[\d,]+\.?\d*)\s+([A-Za-z]{2,6})\s*$/);
-      if (match) {
-        const rawSize = parseFloat(match[1].replace(/,/g, ''));
-        if (!isNaN(rawSize) && rawSize !== 0) {
-          console.log('[OKX Hotkey] getPosition: found size cell =', text, 'rawSize =', rawSize);
-          return {
-            size: Math.abs(rawSize),
-            direction: rawSize < 0 ? 'short' : 'long'
-          };
+      // Determine row direction from cell[1] span class (hedge mode):
+      // positive-pl = long, negative-pl = short.
+      // In one-way mode these classes don't exist; direction falls back to sign.
+      let rowDirection = null;
+      if (cells[1]) {
+        if (cells[1].querySelector(S.positionLongClass)) rowDirection = 'long';
+        else if (cells[1].querySelector(S.positionShortClass)) rowDirection = 'short';
+      }
+
+      // If direction filter specified, skip non-matching rows (hedge mode)
+      if (direction && rowDirection && rowDirection !== direction) continue;
+
+      // Iterate ALL cells to find Size — column order is user-customizable on OKX
+      // Hedge mode: size values are always positive (use rowDirection for sign)
+      // One-way mode: negative=short, positive=long
+      for (const cell of cells) {
+        const text = cell.textContent.trim();
+        const match = text.match(/^([-+]?[\d,]+\.?\d*)\s+([A-Za-z]{2,6})\s*$/);
+        if (match) {
+          const rawSize = parseFloat(match[1].replace(/,/g, ''));
+          if (!isNaN(rawSize) && rawSize !== 0) {
+            // In one-way mode: sign determines direction. In hedge mode: class determines direction.
+            const finalDirection = rowDirection || (rawSize < 0 ? 'short' : 'long');
+            console.log('[OKX Hotkey] getPosition: found size =', text, 'dir =', finalDirection);
+            return {
+              size: Math.abs(rawSize),
+              direction: finalDirection
+            };
+          }
         }
       }
     }
 
-    console.warn('[OKX Hotkey] getPosition: no size cell found in', cells.length, 'cells');
+    console.warn('[OKX Hotkey] getPosition: no matching position found');
     return { size: 0, direction: null };
   }
 
@@ -138,7 +160,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
 
     let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      // Hedge: always open long, no position detection
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
+      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
+    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
       const pos = await getPosition();
       if (pos.direction === 'short' && pos.size > 0) {
         amount = calcAmount(pos.size, ctx.percentage);
@@ -178,7 +206,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
 
     let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      // Hedge: always open short, no position detection
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
+      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
+    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
       const pos = await getPosition();
       if (pos.direction === 'long' && pos.size > 0) {
         amount = calcAmount(pos.size, ctx.percentage);
@@ -218,7 +252,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
 
     let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      // Hedge: always open long, no position detection
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
+      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
+    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
       const pos = await getPosition();
       if (pos.direction === 'short' && pos.size > 0) {
         amount = calcAmount(pos.size, ctx.percentage);
@@ -258,7 +298,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
 
     let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      // Hedge: always open short, no position detection
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
+      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
+    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
       const pos = await getPosition();
       if (pos.direction === 'long' && pos.size > 0) {
         amount = calcAmount(pos.size, ctx.percentage);
@@ -298,7 +344,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
 
     let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      // Hedge: always open long, no position detection
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
+      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
+    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
       const pos = await getPosition();
       if (pos.direction === 'short' && pos.size > 0) {
         amount = calcAmount(pos.size, ctx.percentage);
@@ -346,7 +398,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
 
     let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      // Hedge: always open short, no position detection
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
+      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
+    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
       const pos = await getPosition();
       if (pos.direction === 'long' && pos.size > 0) {
         amount = calcAmount(pos.size, ctx.percentage);
@@ -392,6 +450,7 @@ window.OKXActions = (() => {
    */
   async function closePair(ctx) {
     requirePage(ctx, 'futures');
+    if (ctx.tradingMode === 'hedge') throw new Error('헤지 모드에서는 롱 청산/숏 청산 액션을 사용하세요');
     const pos = await getPosition();
     if (!pos.size || pos.size <= 0) throw new Error('No open position to close');
 
@@ -462,6 +521,7 @@ window.OKXActions = (() => {
    */
   async function flip(ctx) {
     requirePage(ctx, 'futures');
+    if (ctx.tradingMode === 'hedge') throw new Error('포지션 반전은 단방향 모드에서만 지원됩니다');
 
     // Switch to positions tab where the Reverse button lives
     await E.ensureBottomTab('open positions');
@@ -560,6 +620,95 @@ window.OKXActions = (() => {
     return '마지막 주문 체이스 완료';
   }
 
+  // ── Action: CLOSE_LONG_MARKET ────────────────────────────────────────────
+  /**
+   * Close X% of long position at market (hedge mode only).
+   * Close long = negativebutton ("Close long") — verified via DOM scraping.
+   */
+  async function closeLongMarket(ctx) {
+    requirePage(ctx, 'futures');
+    if (ctx.tradingMode !== 'hedge') throw new Error('이 액션은 헤지 모드 전용입니다');
+
+    const pos = await getPosition('long');
+    if (!pos.size || pos.size <= 0) throw new Error('청산할 롱 포지션이 없습니다');
+
+    const amount = calcAmount(pos.size, ctx.percentage);
+    if (amount <= 0) throw new Error('Calculated amount is 0');
+
+    await E.selectDirection('close_long', ctx.tradingMode);
+    await E.selectMarketOrder();
+    await E.fillAmount(amount);
+    await E.submitSell();
+    return `롱 시장가 청산 ${ctx.percentage}%`;
+  }
+
+  // ── Action: CLOSE_LONG_LIMIT ─────────────────────────────────────────────
+  /**
+   * Close X% of long position at limit price (hedge mode only).
+   * Price field is left as-is — user sets the price manually.
+   */
+  async function closeLongLimit(ctx) {
+    requirePage(ctx, 'futures');
+    if (ctx.tradingMode !== 'hedge') throw new Error('이 액션은 헤지 모드 전용입니다');
+
+    const pos = await getPosition('long');
+    if (!pos.size || pos.size <= 0) throw new Error('청산할 롱 포지션이 없습니다');
+
+    const amount = calcAmount(pos.size, ctx.percentage);
+    if (amount <= 0) throw new Error('Calculated amount is 0');
+
+    await E.selectDirection('close_long', ctx.tradingMode);
+    await E.selectLimitOrder();
+    // Don't fill price — leave as-is (user may have set it manually)
+    await E.fillAmount(amount);
+    await E.submitSell();
+    return `롱 지정가 청산 ${ctx.percentage}%`;
+  }
+
+  // ── Action: CLOSE_SHORT_MARKET ───────────────────────────────────────────
+  /**
+   * Close X% of short position at market (hedge mode only).
+   * Close short = positivebutton ("Close short") — verified via DOM scraping.
+   */
+  async function closeShortMarket(ctx) {
+    requirePage(ctx, 'futures');
+    if (ctx.tradingMode !== 'hedge') throw new Error('이 액션은 헤지 모드 전용입니다');
+
+    const pos = await getPosition('short');
+    if (!pos.size || pos.size <= 0) throw new Error('청산할 숏 포지션이 없습니다');
+
+    const amount = calcAmount(pos.size, ctx.percentage);
+    if (amount <= 0) throw new Error('Calculated amount is 0');
+
+    await E.selectDirection('close_short', ctx.tradingMode);
+    await E.selectMarketOrder();
+    await E.fillAmount(amount);
+    await E.submitBuy();
+    return `숏 시장가 청산 ${ctx.percentage}%`;
+  }
+
+  // ── Action: CLOSE_SHORT_LIMIT ────────────────────────────────────────────
+  /**
+   * Close X% of short position at limit price (hedge mode only).
+   * Price field is left as-is — user sets the price manually.
+   */
+  async function closeShortLimit(ctx) {
+    requirePage(ctx, 'futures');
+    if (ctx.tradingMode !== 'hedge') throw new Error('이 액션은 헤지 모드 전용입니다');
+
+    const pos = await getPosition('short');
+    if (!pos.size || pos.size <= 0) throw new Error('청산할 숏 포지션이 없습니다');
+
+    const amount = calcAmount(pos.size, ctx.percentage);
+    if (amount <= 0) throw new Error('Calculated amount is 0');
+
+    await E.selectDirection('close_short', ctx.tradingMode);
+    await E.selectLimitOrder();
+    await E.fillAmount(amount);
+    await E.submitBuy();
+    return `숏 지정가 청산 ${ctx.percentage}%`;
+  }
+
   // ── Dispatch table ────────────────────────────────────────────────────────
 
   const ACTION_MAP = {
@@ -574,7 +723,11 @@ window.OKXActions = (() => {
     FLIP: flip,
     CANCEL_LAST: cancelLast,
     CANCEL_ALL: cancelAll,
-    CHASE_ORDER: chaseOrder
+    CHASE_ORDER: chaseOrder,
+    CLOSE_LONG_MARKET: closeLongMarket,
+    CLOSE_LONG_LIMIT: closeLongLimit,
+    CLOSE_SHORT_MARKET: closeShortMarket,
+    CLOSE_SHORT_LIMIT: closeShortLimit,
   };
 
   /**

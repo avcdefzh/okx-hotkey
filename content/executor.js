@@ -111,38 +111,63 @@ window.OKXExecutor = (() => {
   // ── Direction / side selection ────────────────────────────────────────────
 
   /**
+   * Poll until the order form has an input field, indicating the form is ready
+   * after a tab switch (React re-render). Used after clicking Open/Close tabs.
+   * @param {number} maxAttempts
+   * @param {number} interval — ms between polls
+   * @returns {Promise<boolean>}
+   */
+  async function waitForFormReady(maxAttempts = 10, interval = 50) {
+    for (let i = 0; i < maxAttempts; i++) {
+      const form = document.querySelector(S.orderForm);
+      if (form && form.querySelector(S.inputField)) return true;
+      await delay(interval);
+    }
+    return false;
+  }
+
+  /**
    * Select the correct direction tab based on action and mode.
    *
    * One-way mode: no direction tabs exist. The Buy/Sell submit buttons handle
    * direction. This function is a no-op for one-way mode.
    *
    * Hedge mode: segmented Open/Close tabs exist. Click the appropriate one.
-   * Long/short sub-direction inside each mode is determined by submitBuy/submitSell.
+   * Skips click if the correct tab is already active (aria-selected="true").
+   * Waits for form readiness after tab click.
    *
    * @param {'buy'|'sell'|'open_long'|'open_short'|'close_long'|'close_short'} direction
    * @param {'one-way'|'hedge'|'n/a'} tradingMode
    */
   async function selectDirection(direction, tradingMode) {
-    if (tradingMode === 'hedge') {
-      // Hedge mode: click Open/Close segmented tabs (if they exist)
-      const tabText = direction.startsWith('open') ? 'Open' : 'Close';
-      const tabs = document.querySelectorAll(S.directionTab);
-      let found = false;
-      for (const tab of tabs) {
-        if (tab.textContent.trim().toLowerCase() === tabText.toLowerCase()) {
+    if (tradingMode !== 'hedge') {
+      // One-way mode: no direction tabs — direction is chosen by which submit button is clicked
+      // Do nothing here; submitBuy/submitSell handle direction.
+      return;
+    }
+
+    // Hedge mode: click Open/Close segmented tabs (scoped to order form)
+    const isClose = direction.startsWith('close_');
+    const tabText = isClose ? 'close' : 'open';
+
+    const form = document.querySelector(S.orderForm);
+    if (!form) throw new Error('[OKX Hotkey] selectDirection: order form not found');
+
+    const tabs = form.querySelectorAll(S.directionTab);
+    let found = false;
+    for (const tab of tabs) {
+      if (tab.textContent.trim().toLowerCase() === tabText) {
+        if (tab.getAttribute('aria-selected') !== 'true') {
           tab.click();
-          await delay(80);
-          found = true;
-          break;
+          await waitForFormReady();
         }
-      }
-      if (!found) {
-        console.warn('[OKX Hotkey] selectDirection: hedge tab not found, skipping');
+        found = true;
+        break;
       }
     }
-    // One-way mode: no direction tabs — direction is chosen by which submit button is clicked
-    // Do nothing here; submitBuy/submitSell handle direction.
-    await delay(50);
+    if (!found) {
+      console.warn('[OKX Hotkey] selectDirection: hedge tab not found, skipping');
+    }
   }
 
   // ── Input helpers ─────────────────────────────────────────────────────────
@@ -395,6 +420,7 @@ window.OKXExecutor = (() => {
     selectMarketOrder,
     selectLimitOrder,
     selectDirection,
+    waitForFormReady,
     fillPrice,
     fillAmount,
     clickSliderPercent,
