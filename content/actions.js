@@ -37,6 +37,32 @@ window.OKXActions = (() => {
   }
 
   /**
+   * Detect the unit the amount input expects by checking max-trade text.
+   * OKX shows "Max buy0.9755 BTC" or "Max buy1,000 USDT" depending on display mode.
+   * @returns {string} Unit like 'BTC', 'USDT', 'ETH', etc.
+   */
+  function getAmountUnit() {
+    const el = document.querySelector('[data-testid="max-trade"]');
+    if (!el) return 'USDT';
+    const text = el.textContent.trim();
+    const match = text.match(/[\d.]\s*([A-Za-z]{2,6})(?:\s|$)/);
+    return match ? match[1].toUpperCase() : 'USDT';
+  }
+
+  /**
+   * Convert USDT amount to the input's expected unit if needed.
+   * @param {number} usdtAmount - Amount in USDT
+   * @returns {number} Amount in the input's unit
+   */
+  function convertToInputUnit(usdtAmount) {
+    const unit = getAmountUnit();
+    if (unit === 'USDT') return usdtAmount;
+    const price = R.readLastPrice();
+    if (isNaN(price) || price <= 0) return usdtAmount;
+    return usdtAmount / price;
+  }
+
+  /**
    * Validate context has required page type.
    * @param {object} ctx
    * @param {'spot'|'futures'|'any'} required
@@ -120,11 +146,13 @@ window.OKXActions = (() => {
         const balance = R.readAvailableBalance();
         if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
         amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+        amount = convertToInputUnit(amount);
       }
     } else {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
     }
 
     if (amount <= 0) throw new Error(`Calculated amount is 0`);
@@ -158,11 +186,13 @@ window.OKXActions = (() => {
         const balance = R.readAvailableBalance();
         if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
         amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+        amount = convertToInputUnit(amount);
       }
     } else {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
     }
 
     if (amount <= 0) throw new Error(`Calculated amount is 0`);
@@ -196,11 +226,13 @@ window.OKXActions = (() => {
         const balance = R.readAvailableBalance();
         if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
         amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+        amount = convertToInputUnit(amount);
       }
     } else {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
     }
 
     if (amount <= 0) throw new Error('Calculated amount is 0');
@@ -234,11 +266,13 @@ window.OKXActions = (() => {
         const balance = R.readAvailableBalance();
         if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
         amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+        amount = convertToInputUnit(amount);
       }
     } else {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
     }
 
     if (amount <= 0) throw new Error('Calculated amount is 0');
@@ -272,11 +306,13 @@ window.OKXActions = (() => {
         const balance = R.readAvailableBalance();
         if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
         amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+        amount = convertToInputUnit(amount);
       }
     } else {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
     }
 
     if (amount <= 0) throw new Error('Calculated amount is 0');
@@ -317,11 +353,13 @@ window.OKXActions = (() => {
         const balance = R.readAvailableBalance();
         if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
         amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+        amount = convertToInputUnit(amount);
       }
     } else {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      amount = convertToInputUnit(amount);
     }
 
     if (amount <= 0) throw new Error('Calculated amount is 0');
@@ -459,49 +497,40 @@ window.OKXActions = (() => {
    */
   async function flip(ctx) {
     requirePage(ctx, 'futures');
-    const pos = await getPosition();
-    if (!pos.size || pos.size <= 0) throw new Error('No open position to flip');
 
-    const originalSize = pos.size;
-    const originalDirection = pos.direction;
+    // Switch to positions tab where the Reverse button lives
+    await E.ensureBottomTab('open positions');
+    await E.delay(300);
 
-    // Step 1: Close current position
-    await E.selectMarketOrder();
-    if (ctx.tradingMode === 'hedge') {
-      const closeDir = originalDirection === 'long' ? 'close_long' : 'close_short';
-      await E.selectDirection(closeDir, ctx.tradingMode);
-    } else {
-      const closeDir = originalDirection === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(closeDir, ctx.tradingMode);
+    const S = window.OKX_SELECTORS;
+    const rows = document.querySelectorAll(S.positionRow);
+    if (!rows.length) throw new Error('No open position to flip');
+
+    // Find the Reverse button in the position row
+    const row = rows[0];
+    const buttons = row.querySelectorAll('button');
+    let reverseBtn = null;
+    for (const btn of buttons) {
+      const text = btn.textContent.trim().toLowerCase();
+      if (text === 'reverse' || text === '반전' || text === '反向') {
+        reverseBtn = btn;
+        break;
+      }
     }
-    await E.fillAmount(originalSize);
-    if (originalDirection === 'long') {
-      await E.submitSell();
-    } else {
-      await E.submitBuy();
-    }
 
-    // Step 2: Wait for close to register
+    if (!reverseBtn) throw new Error('Reverse button not found in position row');
+
+    reverseBtn.click();
     await E.delay(500);
 
-    // Step 3: Open opposite position
-    await E.selectMarketOrder();
-    if (ctx.tradingMode === 'hedge') {
-      const openDir = originalDirection === 'long' ? 'open_short' : 'open_long';
-      await E.selectDirection(openDir, ctx.tradingMode);
-    } else {
-      const openDir = originalDirection === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(openDir, ctx.tradingMode);
-    }
-    await E.fillAmount(originalSize);
-    if (originalDirection === 'long') {
-      await E.submitSell();
-    } else {
-      await E.submitBuy();
-    }
+    // Handle confirmation dialog
+    const confirmBtn = Array.from(document.querySelectorAll('button')).find(btn => {
+      const text = btn.textContent.trim().toLowerCase();
+      return text === 'confirm' || text === '확인' || text === 'ok';
+    });
+    if (confirmBtn) confirmBtn.click();
 
-    const newDir = originalDirection === 'long' ? '숏' : '롱';
-    return `포지션 반전: ${originalDirection} → ${newDir} (${originalSize})`;
+    return '포지션 반전 완료';
   }
 
   // ── Action: CANCEL_LAST ──────────────────────────────────────────────────

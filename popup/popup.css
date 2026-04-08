@@ -29,7 +29,7 @@ html {
 }
 
 body {
-  min-width: 480px;
+  min-width: 560px;
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', monospace, sans-serif;
@@ -165,7 +165,7 @@ body {
 /* Card top row: handle, label, hotkey, pct, sound, delete */
 .action-card__row {
   display: grid;
-  grid-template-columns: 20px 1fr 140px 68px 68px 32px;
+  grid-template-columns: 16px 1fr 100px 56px 58px 28px;
   align-items: center;
   gap: 8px;
   padding: 9px 10px;
@@ -225,7 +225,7 @@ body {
 }
 
 .pct-input {
-  width: 60px;
+  width: 48px;
   padding: 5px 20px 5px 6px;
   font-size: 13px;
   background: var(--bg-secondary);
@@ -532,8 +532,7 @@ body {
 .drag-handle {
   cursor: grab;
   color: var(--text-muted);
-  margin-right: 8px;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1;
   user-select: none;
   flex-shrink: 0;
