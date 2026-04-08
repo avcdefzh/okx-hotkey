@@ -358,6 +358,37 @@ body {
   text-overflow: ellipsis;
 }
 
+/* ── Alternate sound row (dual-sound actions) ─────────────── */
+
+.action-card__alt-sound {
+  display: flex;
+  gap: 12px;
+  padding: 4px 10px 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.alt-sound-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.alt-sound-label {
+  color: var(--text-muted);
+  font-weight: 600;
+  min-width: 28px;
+}
+
+.alt-sound-name {
+  color: var(--text-secondary);
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ── Toggle ─────────────────────────────────────────────────────── */
 
 .toggle {

@@ -18,22 +18,22 @@
 // ── Action type definitions ───────────────────────────────────────────────────
 
 const ACTION_TYPES = [
-  { type: 'MARKET_BUY',    label: '시장가 매수',      hasPct: true  },
-  { type: 'MARKET_SELL',   label: '시장가 매도',      hasPct: true  },
-  { type: 'LIMIT_BUY',     label: '지정가 매수',      hasPct: true  },
-  { type: 'LIMIT_SELL',    label: '지정가 매도',      hasPct: true  },
-  { type: 'TICK_BUY',      label: '틱 매수',          hasPct: true, hasTicks: true  },
-  { type: 'TICK_SELL',     label: '틱 매도',          hasPct: true, hasTicks: true  },
-  { type: 'CLOSE_PAIR',    label: '페어 청산',        hasPct: false },
-  { type: 'CLOSE_ALL',     label: '전체 청산',        hasPct: false },
+  { type: 'MARKET_BUY',    label: '시장가 매수',      hasPct: true,  hasAddSound: true  },
+  { type: 'MARKET_SELL',   label: '시장가 매도',      hasPct: true,  hasAddSound: true  },
+  { type: 'LIMIT_BUY',     label: '지정가 매수',      hasPct: true,  hasAddSound: true  },
+  { type: 'LIMIT_SELL',    label: '지정가 매도',      hasPct: true,  hasAddSound: true  },
+  { type: 'TICK_BUY',      label: '틱 매수',          hasPct: true,  hasTicks: true, hasAddSound: true  },
+  { type: 'TICK_SELL',     label: '틱 매도',          hasPct: true,  hasTicks: true, hasAddSound: true  },
+  { type: 'CLOSE_PAIR',    label: '페어 청산',        hasPct: false, hasProfitLossSound: true },
+  { type: 'CLOSE_ALL',     label: '전체 청산',        hasPct: false, hasProfitLossSound: true },
   { type: 'FLIP',          label: '포지션 반전',      hasPct: false },
   { type: 'CANCEL_LAST',   label: '마지막 주문 취소', hasPct: false },
   { type: 'CANCEL_ALL',         label: '전체 주문 취소',   hasPct: false },
   { type: 'CHASE_ORDER',        label: '주문 체이스',      hasPct: false },
-  { type: 'CLOSE_LONG_MARKET',  label: '롱 시장가 청산',   hasPct: true  },
-  { type: 'CLOSE_LONG_LIMIT',   label: '롱 지정가 청산',   hasPct: true  },
-  { type: 'CLOSE_SHORT_MARKET', label: '숏 시장가 청산',   hasPct: true  },
-  { type: 'CLOSE_SHORT_LIMIT',  label: '숏 지정가 청산',   hasPct: true  },
+  { type: 'CLOSE_LONG_MARKET',  label: '롱 시장가 청산',   hasPct: true,  hasProfitLossSound: true },
+  { type: 'CLOSE_LONG_LIMIT',   label: '롱 지정가 청산',   hasPct: true,  hasProfitLossSound: true },
+  { type: 'CLOSE_SHORT_MARKET', label: '숏 시장가 청산',   hasPct: true,  hasProfitLossSound: true },
+  { type: 'CLOSE_SHORT_LIMIT',  label: '숏 지정가 청산',   hasPct: true,  hasProfitLossSound: true },
 ];
 
 const DEFAULT_GENERAL = {
@@ -360,6 +360,97 @@ function renderActionCard(action) {
     card.appendChild(nameEl);
   }
 
+  // Alternate sound row (for dual-sound actions)
+  if (typeDef.hasAddSound || typeDef.hasProfitLossSound) {
+    const altRow = document.createElement('div');
+    altRow.className = 'action-card__alt-sound';
+
+    const label1Text = typeDef.hasAddSound ? '신규' : '수익';
+    const label2Text = typeDef.hasAddSound ? '물타기' : '손실';
+    const altSoundKey = typeDef.hasAddSound ? 'soundAdd' : 'soundLoss';
+    const altSoundNameKey = typeDef.hasAddSound ? 'soundAddName' : 'soundLossName';
+
+    // Primary sound label + controls
+    const primary = document.createElement('div');
+    primary.className = 'alt-sound-item';
+    const pLabel = document.createElement('span');
+    pLabel.className = 'alt-sound-label';
+    pLabel.textContent = label1Text;
+    const pName = document.createElement('span');
+    pName.className = 'alt-sound-name';
+    pName.textContent = action.soundName || '없음';
+    primary.appendChild(pLabel);
+    primary.appendChild(pName);
+
+    // Alternate sound label + controls
+    const alternate = document.createElement('div');
+    alternate.className = 'alt-sound-item';
+    const aLabel = document.createElement('span');
+    aLabel.className = 'alt-sound-label';
+    aLabel.textContent = label2Text;
+    const aUpload = document.createElement('button');
+    aUpload.className = 'btn-icon' + (action[altSoundKey] ? ' has-sound' : '');
+    aUpload.title = action[altSoundNameKey] || `${label2Text} 소리 업로드`;
+    aUpload.textContent = '🔊';
+    const aPlay = document.createElement('button');
+    aPlay.className = 'btn-icon';
+    aPlay.title = `${label2Text} 소리 미리 듣기`;
+    aPlay.textContent = '▶';
+    aPlay.style.display = action[altSoundKey] ? '' : 'none';
+    const aName = document.createElement('span');
+    aName.className = 'alt-sound-name';
+    aName.textContent = action[altSoundNameKey] || '없음';
+
+    const aFileInput = document.createElement('input');
+    aFileInput.type = 'file';
+    aFileInput.accept = 'audio/mp3,audio/wav,audio/ogg,audio/*';
+    aFileInput.style.display = 'none';
+
+    aUpload.addEventListener('click', () => aFileInput.click());
+    aFileInput.addEventListener('change', () => {
+      const file = aFileInput.files && aFileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target.result;
+        const idx = currentActions.findIndex(a => a.id === action.id);
+        if (idx !== -1) {
+          currentActions[idx][altSoundKey] = dataUrl;
+          currentActions[idx][altSoundNameKey] = file.name;
+        }
+        action[altSoundKey] = dataUrl;
+        action[altSoundNameKey] = file.name;
+        aUpload.classList.add('has-sound');
+        aUpload.title = file.name;
+        aPlay.style.display = '';
+        aName.textContent = file.name;
+      };
+      reader.readAsDataURL(file);
+      aFileInput.value = '';
+    });
+
+    aPlay.addEventListener('click', () => {
+      if (!action[altSoundKey]) return;
+      try {
+        new Audio(action[altSoundKey]).play().catch(err => {
+          showFeedback(`소리 재생 오류: ${err.message}`, 'error');
+        });
+      } catch (err) {
+        showFeedback(`소리 재생 오류: ${err.message}`, 'error');
+      }
+    });
+
+    alternate.appendChild(aLabel);
+    alternate.appendChild(aUpload);
+    alternate.appendChild(aPlay);
+    alternate.appendChild(aName);
+    alternate.appendChild(aFileInput);
+
+    altRow.appendChild(primary);
+    altRow.appendChild(alternate);
+    card.appendChild(altRow);
+  }
+
   return card;
 }
 
@@ -449,8 +540,12 @@ function addAction(typeDef) {
     hotkey:     { key: '', ctrl: false, shift: false, alt: false },
     percentage: typeDef.hasPct ? 5 : 0,
     ticks:      typeDef.hasTicks ? 1 : 0,
-    sound:      null,
-    soundName:  null
+    sound:         null,
+    soundName:     null,
+    soundAdd:      null,
+    soundAddName:  null,
+    soundLoss:     null,
+    soundLossName: null
   };
   currentActions.push(newAction);
   const card = renderActionCard(newAction);
@@ -534,8 +629,12 @@ function collectActions() {
       hotkey:    hotkey,
       percentage: percentage,
       ticks:     ticks,
-      sound:     existing.sound || null,
-      soundName: existing.soundName || null
+      sound:         existing.sound || null,
+      soundName:     existing.soundName || null,
+      soundAdd:      existing.soundAdd || null,
+      soundAddName:  existing.soundAddName || null,
+      soundLoss:     existing.soundLoss || null,
+      soundLossName: existing.soundLossName || null
     };
   });
 }

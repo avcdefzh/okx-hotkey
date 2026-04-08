@@ -135,15 +135,22 @@
 
   let audioCtx = null;
 
-  function playActionSound(action) {
+  function playActionSound(action, soundKey = 'default') {
     if (!settings.general.soundEnabled) return;
-    if (!action.sound) return;
+
+    // Select the appropriate sound based on soundKey
+    let soundData = action.sound;
+    if (soundKey === 'add' && action.soundAdd) soundData = action.soundAdd;
+    if (soundKey === 'loss' && action.soundLoss) soundData = action.soundLoss;
+    if (soundKey === 'profit') soundData = action.sound; // profit uses default sound
+
+    if (!soundData) return;
     try {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
       // Decode base64 data URL directly (avoids CSP blocking fetch on data: URLs)
-      const base64 = action.sound.split(',')[1];
+      const base64 = soundData.split(',')[1];
       const binaryStr = atob(base64);
       const bytes = new Uint8Array(binaryStr.length);
       for (let i = 0; i < binaryStr.length; i++) {
@@ -216,8 +223,10 @@
       };
 
       const result = await OKXActions.execute(action.type, ctx);
-      OKXOverlay.update(toast, result || `${action.label} 완료`, 'success');
-      playActionSound(action);
+      const message = typeof result === 'object' ? result.message : result;
+      const soundKey = typeof result === 'object' ? (result.soundKey || 'default') : 'default';
+      OKXOverlay.update(toast, message || `${action.label} 완료`, 'success');
+      playActionSound(action, soundKey);
     } catch (err) {
       console.error(`[OKX Hotkey] Action ${action.type} failed:`, err);
       OKXOverlay.update(toast, `오류: ${err.message}`, 'error');

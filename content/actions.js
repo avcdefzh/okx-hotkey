@@ -133,7 +133,7 @@ window.OKXActions = (() => {
         break;
       }
     }
-    if (posCount === 0) return { size: 0, direction: null };
+    if (posCount === 0) return { size: 0, direction: null, isProfit: null };
 
     // Position exists — switch to positions tab and read
     await E.ensureBottomTab('open positions');
@@ -147,7 +147,7 @@ window.OKXActions = (() => {
     }
 
     // Position table lives in .position-box (NOT .order-table-box which is for orders)
-    if (!rows.length) return { size: 0, direction: null };
+    if (!rows.length) return { size: 0, direction: null, isProfit: null };
 
     for (const row of rows) {
       const cells = [...row.querySelectorAll('td')];
@@ -175,9 +175,20 @@ window.OKXActions = (() => {
           if (!isNaN(rawSize) && rawSize !== 0) {
             // In one-way mode: sign determines direction. In hedge mode: class determines direction.
             const finalDirection = rowDirection || (rawSize < 0 ? 'short' : 'long');
+            // Scan for PnL sign in remaining cells
+            let isProfit = null;
+            for (const c of cells) {
+              const t = c.textContent.trim();
+              // PnL pattern: starts with + or -, contains % in parentheses
+              if (/^[+-]/.test(t) && t.includes('%')) {
+                isProfit = t.startsWith('+');
+                break;
+              }
+            }
             return {
               size: Math.abs(rawSize),
-              direction: finalDirection
+              direction: finalDirection,
+              isProfit
             };
           }
         }
@@ -185,7 +196,7 @@ window.OKXActions = (() => {
     }
 
     console.warn('[OKX Hotkey] getPosition: no matching position found');
-    return { size: 0, direction: null };
+    return { size: 0, direction: null, isProfit: null };
   }
 
   // ── Action: MARKET_BUY ────────────────────────────────────────────────────
@@ -197,13 +208,20 @@ window.OKXActions = (() => {
     const amount = await resolveAmount(ctx, 'buy');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
+    // Detect averaging: same-direction position exists
+    let isAdd = false;
+    if (ctx.pageType === 'futures') {
+      const pos = await getPosition('long');
+      if (pos.size > 0) isAdd = true;
+    }
+
     await E.selectMarketOrder();
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
     await E.fillAmount(amount);
     await E.submitBuy();
-    return `시장가 매수 ${ctx.percentage}% (${amount})`;
+    return { message: `시장가 매수 ${ctx.percentage}% (${amount})`, soundKey: isAdd ? 'add' : 'default' };
   }
 
   // ── Action: MARKET_SELL ───────────────────────────────────────────────────
@@ -215,13 +233,20 @@ window.OKXActions = (() => {
     const amount = await resolveAmount(ctx, 'sell');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
+    // Detect averaging: same-direction position exists
+    let isAdd = false;
+    if (ctx.pageType === 'futures') {
+      const pos = await getPosition('short');
+      if (pos.size > 0) isAdd = true;
+    }
+
     await E.selectMarketOrder();
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
     await E.fillAmount(amount);
     await E.submitSell();
-    return `시장가 매도 ${ctx.percentage}% (${amount})`;
+    return { message: `시장가 매도 ${ctx.percentage}% (${amount})`, soundKey: isAdd ? 'add' : 'default' };
   }
 
   // ── Action: LIMIT_BUY ────────────────────────────────────────────────────
@@ -233,13 +258,20 @@ window.OKXActions = (() => {
     const amount = await resolveAmount(ctx, 'buy');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
+    // Detect averaging: same-direction position exists
+    let isAdd = false;
+    if (ctx.pageType === 'futures') {
+      const pos = await getPosition('long');
+      if (pos.size > 0) isAdd = true;
+    }
+
     await E.selectLimitOrder();
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
     await E.fillAmount(amount);
     await E.submitBuy();
-    return `지정가 매수 ${ctx.percentage}% (${amount})`;
+    return { message: `지정가 매수 ${ctx.percentage}% (${amount})`, soundKey: isAdd ? 'add' : 'default' };
   }
 
   // ── Action: LIMIT_SELL ───────────────────────────────────────────────────
@@ -251,13 +283,20 @@ window.OKXActions = (() => {
     const amount = await resolveAmount(ctx, 'sell');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
+    // Detect averaging: same-direction position exists
+    let isAdd = false;
+    if (ctx.pageType === 'futures') {
+      const pos = await getPosition('short');
+      if (pos.size > 0) isAdd = true;
+    }
+
     await E.selectLimitOrder();
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
     await E.fillAmount(amount);
     await E.submitSell();
-    return `지정가 매도 ${ctx.percentage}% (${amount})`;
+    return { message: `지정가 매도 ${ctx.percentage}% (${amount})`, soundKey: isAdd ? 'add' : 'default' };
   }
 
   // ── Action: TICK_BUY ─────────────────────────────────────────────────────
@@ -268,6 +307,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
     const amount = await resolveAmount(ctx, 'buy');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
+
+    // Detect averaging: same-direction position exists
+    let isAdd = false;
+    if (ctx.pageType === 'futures') {
+      const pos = await getPosition('long');
+      if (pos.size > 0) isAdd = true;
+    }
 
     const bestBid = R.readBestBid();
     if (isNaN(bestBid)) throw new Error('최우선 매수호가를 읽을 수 없습니다');
@@ -283,7 +329,7 @@ window.OKXActions = (() => {
     await E.fillPrice(price);
     await E.fillAmount(amount);
     await E.submitBuy();
-    return `틱 매수 ${ctx.percentage}% @ ${price}`;
+    return { message: `틱 매수 ${ctx.percentage}% @ ${price}`, soundKey: isAdd ? 'add' : 'default' };
   }
 
   // ── Action: TICK_SELL ────────────────────────────────────────────────────
@@ -294,6 +340,13 @@ window.OKXActions = (() => {
     requirePage(ctx, 'any');
     const amount = await resolveAmount(ctx, 'sell');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
+
+    // Detect averaging: same-direction position exists
+    let isAdd = false;
+    if (ctx.pageType === 'futures') {
+      const pos = await getPosition('short');
+      if (pos.size > 0) isAdd = true;
+    }
 
     const bestAsk = R.readBestAsk();
     if (isNaN(bestAsk)) throw new Error('최우선 매도호가를 읽을 수 없습니다');
@@ -309,7 +362,7 @@ window.OKXActions = (() => {
     await E.fillPrice(price);
     await E.fillAmount(amount);
     await E.submitSell();
-    return `틱 매도 ${ctx.percentage}% @ ${price}`;
+    return { message: `틱 매도 ${ctx.percentage}% @ ${price}`, soundKey: isAdd ? 'add' : 'default' };
   }
 
   // ── Action: CLOSE_PAIR ───────────────────────────────────────────────────
@@ -335,7 +388,7 @@ window.OKXActions = (() => {
       await E.submitBuy();
     }
 
-    return `페어 전체 청산 (${pos.size})`;
+    return { message: `페어 전체 청산 (${pos.size})`, soundKey: pos.isProfit ? 'profit' : 'loss' };
   }
 
   // ── Action: CLOSE_ALL ────────────────────────────────────────────────────
@@ -368,6 +421,9 @@ window.OKXActions = (() => {
 
     if (!closeBtn) throw new Error('전체 청산 버튼을 찾을 수 없습니다');
 
+    const pos = await getPosition();
+    const profitKey = pos.isProfit ? 'profit' : 'loss';
+
     closeBtn.click();
     const confirmBtn = await E.waitForConfirmButton();
     if (confirmBtn) {
@@ -375,7 +431,7 @@ window.OKXActions = (() => {
       await E.delay(100);
     }
 
-    return '전체 포지션 청산';
+    return { message: '전체 포지션 청산', soundKey: profitKey };
   }
 
   // ── Action: FLIP ─────────────────────────────────────────────────────────
@@ -415,7 +471,7 @@ window.OKXActions = (() => {
       await E.delay(100);
     }
 
-    return '포지션 반전 완료';
+    return { message: '포지션 반전 완료', soundKey: 'default' };
   }
 
   // ── Action: CANCEL_LAST ──────────────────────────────────────────────────
@@ -435,7 +491,7 @@ window.OKXActions = (() => {
 
     // Most recent order is typically the first row
     await E.cancelOrderRow(rows[0]);
-    return '마지막 주문 취소';
+    return { message: '마지막 주문 취소', soundKey: 'default' };
   }
 
   // ── Action: CANCEL_ALL ───────────────────────────────────────────────────
@@ -454,7 +510,7 @@ window.OKXActions = (() => {
     if (!rows || rows.length === 0) throw new Error('미체결 주문 없음');
 
     await E.cancelAllOrders();
-    return `전체 주문 취소 (${rows.length}건)`;
+    return { message: `전체 주문 취소 (${rows.length}건)`, soundKey: 'default' };
   }
 
   // ── Action: CHASE_ORDER ──────────────────────────────────────────────────
@@ -495,7 +551,7 @@ window.OKXActions = (() => {
     chaseBtn.click();
     await E.delay(100);
 
-    return '마지막 주문 체이스 완료';
+    return { message: '마지막 주문 체이스 완료', soundKey: 'default' };
   }
 
   // ── Action: CLOSE_LONG_MARKET ────────────────────────────────────────────
@@ -517,7 +573,7 @@ window.OKXActions = (() => {
     await E.selectDirection('close_long', ctx.tradingMode);
     await E.fillAmount(amount);
     await E.submitSell();
-    return `롱 시장가 청산 ${ctx.percentage}%`;
+    return { message: `롱 시장가 청산 ${ctx.percentage}%`, soundKey: pos.isProfit ? 'profit' : 'loss' };
   }
 
   // ── Action: CLOSE_LONG_LIMIT ─────────────────────────────────────────────
@@ -540,7 +596,7 @@ window.OKXActions = (() => {
     // Don't fill price — leave as-is (user may have set it manually)
     await E.fillAmount(amount);
     await E.submitSell();
-    return `롱 지정가 청산 ${ctx.percentage}%`;
+    return { message: `롱 지정가 청산 ${ctx.percentage}%`, soundKey: pos.isProfit ? 'profit' : 'loss' };
   }
 
   // ── Action: CLOSE_SHORT_MARKET ───────────────────────────────────────────
@@ -562,7 +618,7 @@ window.OKXActions = (() => {
     await E.selectDirection('close_short', ctx.tradingMode);
     await E.fillAmount(amount);
     await E.submitBuy();
-    return `숏 시장가 청산 ${ctx.percentage}%`;
+    return { message: `숏 시장가 청산 ${ctx.percentage}%`, soundKey: pos.isProfit ? 'profit' : 'loss' };
   }
 
   // ── Action: CLOSE_SHORT_LIMIT ────────────────────────────────────────────
@@ -584,7 +640,7 @@ window.OKXActions = (() => {
     await E.selectDirection('close_short', ctx.tradingMode);
     await E.fillAmount(amount);
     await E.submitBuy();
-    return `숏 지정가 청산 ${ctx.percentage}%`;
+    return { message: `숏 지정가 청산 ${ctx.percentage}%`, soundKey: pos.isProfit ? 'profit' : 'loss' };
   }
 
   // ── Dispatch table ────────────────────────────────────────────────────────
