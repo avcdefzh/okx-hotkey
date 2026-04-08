@@ -85,7 +85,7 @@ window.OKXActions = (() => {
       return convertToInputUnit(amount);
     }
 
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+    if (ctx.pageType === 'futures' && ctx.tradingMode !== 'hedge') {
       const pos = await getPosition();
       const counterDir = isBuy ? 'short' : 'long';
       if (pos.direction === counterDir && pos.size > 0) {
@@ -218,7 +218,7 @@ window.OKXActions = (() => {
 
     let soundKey = 'default';
     if (ctx.pageType === 'futures') {
-      if (ctx.tradingMode === 'one-way') {
+      if (ctx.tradingMode !== 'hedge') {
         const pos = await getPosition();
         if (pos.direction === 'short' && pos.size > 0) {
           soundKey = pos.isProfit ? 'profit' : 'loss'; // closing a short
@@ -251,7 +251,7 @@ window.OKXActions = (() => {
 
     let soundKey = 'default';
     if (ctx.pageType === 'futures') {
-      if (ctx.tradingMode === 'one-way') {
+      if (ctx.tradingMode !== 'hedge') {
         const pos = await getPosition();
         if (pos.direction === 'long' && pos.size > 0) {
           soundKey = pos.isProfit ? 'profit' : 'loss'; // closing a long
@@ -284,7 +284,7 @@ window.OKXActions = (() => {
 
     let soundKey = 'default';
     if (ctx.pageType === 'futures') {
-      if (ctx.tradingMode === 'one-way') {
+      if (ctx.tradingMode !== 'hedge') {
         const pos = await getPosition();
         if (pos.direction === 'short' && pos.size > 0) {
           soundKey = pos.isProfit ? 'profit' : 'loss'; // closing a short
@@ -317,7 +317,7 @@ window.OKXActions = (() => {
 
     let soundKey = 'default';
     if (ctx.pageType === 'futures') {
-      if (ctx.tradingMode === 'one-way') {
+      if (ctx.tradingMode !== 'hedge') {
         const pos = await getPosition();
         if (pos.direction === 'long' && pos.size > 0) {
           soundKey = pos.isProfit ? 'profit' : 'loss'; // closing a long
@@ -350,7 +350,7 @@ window.OKXActions = (() => {
 
     let soundKey = 'default';
     if (ctx.pageType === 'futures') {
-      if (ctx.tradingMode === 'one-way') {
+      if (ctx.tradingMode !== 'hedge') {
         const pos = await getPosition();
         if (pos.direction === 'short' && pos.size > 0) {
           soundKey = pos.isProfit ? 'profit' : 'loss'; // closing a short
@@ -391,7 +391,7 @@ window.OKXActions = (() => {
 
     let soundKey = 'default';
     if (ctx.pageType === 'futures') {
-      if (ctx.tradingMode === 'one-way') {
+      if (ctx.tradingMode !== 'hedge') {
         const pos = await getPosition();
         if (pos.direction === 'long' && pos.size > 0) {
           soundKey = pos.isProfit ? 'profit' : 'loss'; // closing a long
