@@ -63,16 +63,50 @@ window.OKXActions = (() => {
   }
 
   /**
+   * Resolve the trade amount based on page type, trading mode, and direction.
+   * Shared logic for all 6 buy/sell actions.
+   *
+   * @param {object} ctx — action context
+   * @param {'buy'|'sell'} side — trade side
+   * @returns {Promise<number>} resolved amount in the input's unit
+   */
+  async function resolveAmount(ctx, side) {
+    const isBuy = side === 'buy';
+
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
+      await E.selectDirection(isBuy ? 'open_long' : 'open_short', ctx.tradingMode);
+      const balance = R.readAvailableBalance();
+      if (isNaN(balance) || balance <= 0) throw new Error('가용 잔고를 읽을 수 없습니다');
+      let amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+      return convertToInputUnit(amount);
+    }
+
+    if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
+      const pos = await getPosition();
+      const counterDir = isBuy ? 'short' : 'long';
+      if (pos.direction === counterDir && pos.size > 0) {
+        return calcAmount(pos.size, ctx.percentage);
+      }
+    }
+
+    // Spot, or futures one-way with no counter-position
+    const balance = R.readAvailableBalance();
+    if (isNaN(balance) || balance <= 0) throw new Error('가용 잔고를 읽을 수 없습니다');
+    let amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+    return convertToInputUnit(amount);
+  }
+
+  /**
    * Validate context has required page type.
    * @param {object} ctx
    * @param {'spot'|'futures'|'any'} required
    */
   function requirePage(ctx, required) {
     if (required !== 'any' && ctx.pageType !== required) {
-      throw new Error(`This action requires ${required} page (current: ${ctx.pageType})`);
+      throw new Error(`이 액션은 ${required === 'futures' ? '선물' : required === 'spot' ? '현물' : required} 페이지에서만 사용 가능합니다`);
     }
     if (ctx.pageType === 'unknown') {
-      throw new Error('OKX trading page not detected');
+      throw new Error('OKX 트레이딩 페이지를 인식하지 못했습니다');
     }
   }
 
@@ -90,7 +124,7 @@ window.OKXActions = (() => {
    */
   async function getPosition(direction) {
     // Quick check: position count from tab text (no tab switching needed)
-    const tabs = document.querySelectorAll('[role="tab"]');
+    const tabs = document.querySelectorAll('.okui-tabs-pane-underline[role="tab"]');
     let posCount = 0;
     for (const tab of tabs) {
       if (tab.textContent.trim().toLowerCase().includes('open positions')) {
@@ -99,17 +133,20 @@ window.OKXActions = (() => {
         break;
       }
     }
-    console.log('[OKX Hotkey] getPosition: posCount =', posCount, 'filter =', direction);
     if (posCount === 0) return { size: 0, direction: null };
 
     // Position exists — switch to positions tab and read
     await E.ensureBottomTab('open positions');
-    await E.delay(200);
+    // Poll for position rows instead of fixed delay
+    const S = window.OKX_SELECTORS;
+    let rows;
+    for (let i = 0; i < 8; i++) {
+      rows = document.querySelectorAll(S.positionRow);
+      if (rows.length > 0) break;
+      await E.delay(50);
+    }
 
     // Position table lives in .position-box (NOT .order-table-box which is for orders)
-    const S = window.OKX_SELECTORS;
-    const rows = document.querySelectorAll(S.positionRow);
-    console.log('[OKX Hotkey] getPosition: rows found =', rows.length);
     if (!rows.length) return { size: 0, direction: null };
 
     for (const row of rows) {
@@ -138,7 +175,6 @@ window.OKXActions = (() => {
           if (!isNaN(rawSize) && rawSize !== 0) {
             // In one-way mode: sign determines direction. In hedge mode: class determines direction.
             const finalDirection = rowDirection || (rawSize < 0 ? 'short' : 'long');
-            console.log('[OKX Hotkey] getPosition: found size =', text, 'dir =', finalDirection);
             return {
               size: Math.abs(rawSize),
               direction: finalDirection
@@ -158,40 +194,13 @@ window.OKXActions = (() => {
    */
   async function marketBuy(ctx) {
     requirePage(ctx, 'any');
-
-    let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: switch to Open tab first so max-asset balance is visible
-      await E.selectDirection('open_long', ctx.tradingMode);
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
-      const pos = await getPosition();
-      if (pos.direction === 'short' && pos.size > 0) {
-        amount = calcAmount(pos.size, ctx.percentage);
-      } else {
-        const balance = R.readAvailableBalance();
-        if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-        amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-        amount = convertToInputUnit(amount);
-      }
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    }
-
-    if (amount <= 0) throw new Error(`Calculated amount is 0`);
+    const amount = await resolveAmount(ctx, 'buy');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectMarketOrder();
-
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
-
     await E.fillAmount(amount);
     await E.submitBuy();
     return `시장가 매수 ${ctx.percentage}% (${amount})`;
@@ -203,40 +212,13 @@ window.OKXActions = (() => {
    */
   async function marketSell(ctx) {
     requirePage(ctx, 'any');
-
-    let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: switch to Open tab first so max-asset balance is visible
-      await E.selectDirection('open_short', ctx.tradingMode);
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
-      const pos = await getPosition();
-      if (pos.direction === 'long' && pos.size > 0) {
-        amount = calcAmount(pos.size, ctx.percentage);
-      } else {
-        const balance = R.readAvailableBalance();
-        if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-        amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-        amount = convertToInputUnit(amount);
-      }
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    }
-
-    if (amount <= 0) throw new Error(`Calculated amount is 0`);
+    const amount = await resolveAmount(ctx, 'sell');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectMarketOrder();
-
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
-
     await E.fillAmount(amount);
     await E.submitSell();
     return `시장가 매도 ${ctx.percentage}% (${amount})`;
@@ -248,40 +230,13 @@ window.OKXActions = (() => {
    */
   async function limitBuy(ctx) {
     requirePage(ctx, 'any');
-
-    let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: switch to Open tab first so max-asset balance is visible
-      await E.selectDirection('open_long', ctx.tradingMode);
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
-      const pos = await getPosition();
-      if (pos.direction === 'short' && pos.size > 0) {
-        amount = calcAmount(pos.size, ctx.percentage);
-      } else {
-        const balance = R.readAvailableBalance();
-        if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-        amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-        amount = convertToInputUnit(amount);
-      }
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    }
-
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    const amount = await resolveAmount(ctx, 'buy');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectLimitOrder();
-
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
-
     await E.fillAmount(amount);
     await E.submitBuy();
     return `지정가 매수 ${ctx.percentage}% (${amount})`;
@@ -293,40 +248,13 @@ window.OKXActions = (() => {
    */
   async function limitSell(ctx) {
     requirePage(ctx, 'any');
-
-    let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: switch to Open tab first so max-asset balance is visible
-      await E.selectDirection('open_short', ctx.tradingMode);
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
-      const pos = await getPosition();
-      if (pos.direction === 'long' && pos.size > 0) {
-        amount = calcAmount(pos.size, ctx.percentage);
-      } else {
-        const balance = R.readAvailableBalance();
-        if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-        amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-        amount = convertToInputUnit(amount);
-      }
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    }
-
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    const amount = await resolveAmount(ctx, 'sell');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectLimitOrder();
-
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
-
     await E.fillAmount(amount);
     await E.submitSell();
     return `지정가 매도 ${ctx.percentage}% (${amount})`;
@@ -338,47 +266,20 @@ window.OKXActions = (() => {
    */
   async function tickBuy(ctx) {
     requirePage(ctx, 'any');
-
-    let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: switch to Open tab first so max-asset balance is visible
-      await E.selectDirection('open_long', ctx.tradingMode);
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
-      const pos = await getPosition();
-      if (pos.direction === 'short' && pos.size > 0) {
-        amount = calcAmount(pos.size, ctx.percentage);
-      } else {
-        const balance = R.readAvailableBalance();
-        if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-        amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-        amount = convertToInputUnit(amount);
-      }
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    }
-
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    const amount = await resolveAmount(ctx, 'buy');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     const bestBid = R.readBestBid();
-    if (isNaN(bestBid)) throw new Error('Best bid price not readable');
+    if (isNaN(bestBid)) throw new Error('최우선 매수호가를 읽을 수 없습니다');
     const tickSize = R.readTickSize();
     const tick = isNaN(tickSize) ? 0.01 : tickSize;
     const ticks = ctx.ticks || 1;
     const price = parseFloat((bestBid + tick * ticks).toFixed(String(tick).split('.')[1]?.length || 2));
 
     await E.selectLimitOrder();
-
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('buy', ctx.tradingMode);
     }
-
     await E.fillPrice(price);
     await E.fillAmount(amount);
     await E.submitBuy();
@@ -391,47 +292,20 @@ window.OKXActions = (() => {
    */
   async function tickSell(ctx) {
     requirePage(ctx, 'any');
-
-    let amount;
-    if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      // Hedge: switch to Open tab first so max-asset balance is visible
-      await E.selectDirection('open_short', ctx.tradingMode);
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    } else if (ctx.pageType === 'futures' && ctx.tradingMode === 'one-way') {
-      const pos = await getPosition();
-      if (pos.direction === 'long' && pos.size > 0) {
-        amount = calcAmount(pos.size, ctx.percentage);
-      } else {
-        const balance = R.readAvailableBalance();
-        if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-        amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-        amount = convertToInputUnit(amount);
-      }
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-      amount = convertToInputUnit(amount);
-    }
-
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    const amount = await resolveAmount(ctx, 'sell');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     const bestAsk = R.readBestAsk();
-    if (isNaN(bestAsk)) throw new Error('Best ask price not readable');
+    if (isNaN(bestAsk)) throw new Error('최우선 매도호가를 읽을 수 없습니다');
     const tickSize = R.readTickSize();
     const tick = isNaN(tickSize) ? 0.01 : tickSize;
     const ticks = ctx.ticks || 1;
     const price = parseFloat((bestAsk - tick * ticks).toFixed(String(tick).split('.')[1]?.length || 2));
 
     await E.selectLimitOrder();
-
     if (ctx.pageType !== 'futures' || ctx.tradingMode !== 'hedge') {
       await E.selectDirection('sell', ctx.tradingMode);
     }
-
     await E.fillPrice(price);
     await E.fillAmount(amount);
     await E.submitSell();
@@ -446,7 +320,7 @@ window.OKXActions = (() => {
     requirePage(ctx, 'futures');
     if (ctx.tradingMode === 'hedge') throw new Error('헤지 모드에서는 롱 청산/숏 청산 액션을 사용하세요');
     const pos = await getPosition();
-    if (!pos.size || pos.size <= 0) throw new Error('No open position to close');
+    if (!pos.size || pos.size <= 0) throw new Error('청산할 포지션이 없습니다');
 
     await E.selectMarketOrder();
 
@@ -492,7 +366,7 @@ window.OKXActions = (() => {
       }
     }
 
-    if (!closeBtn) throw new Error('Close all button not found or disabled (no positions?)');
+    if (!closeBtn) throw new Error('전체 청산 버튼을 찾을 수 없습니다');
 
     closeBtn.click();
     const confirmBtn = await E.waitForConfirmButton();
@@ -518,7 +392,7 @@ window.OKXActions = (() => {
 
     const S = window.OKX_SELECTORS;
     const rows = document.querySelectorAll(S.positionRow);
-    if (!rows.length) throw new Error('No open position to flip');
+    if (!rows.length) throw new Error('반전할 포지션이 없습니다');
 
     // Find the Reverse button in the position row
     const row = rows[0];
@@ -532,7 +406,7 @@ window.OKXActions = (() => {
       }
     }
 
-    if (!reverseBtn) throw new Error('Reverse button not found in position row');
+    if (!reverseBtn) throw new Error('반전 버튼을 찾을 수 없습니다');
 
     reverseBtn.click();
     const confirmBtn = await E.waitForConfirmButton();
@@ -622,7 +496,7 @@ window.OKXActions = (() => {
     if (!pos.size || pos.size <= 0) throw new Error('청산할 롱 포지션이 없습니다');
 
     const amount = calcAmount(pos.size, ctx.percentage);
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectMarketOrder();
     await E.selectDirection('close_long', ctx.tradingMode);
@@ -644,7 +518,7 @@ window.OKXActions = (() => {
     if (!pos.size || pos.size <= 0) throw new Error('청산할 롱 포지션이 없습니다');
 
     const amount = calcAmount(pos.size, ctx.percentage);
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectLimitOrder();
     await E.selectDirection('close_long', ctx.tradingMode);
@@ -667,7 +541,7 @@ window.OKXActions = (() => {
     if (!pos.size || pos.size <= 0) throw new Error('청산할 숏 포지션이 없습니다');
 
     const amount = calcAmount(pos.size, ctx.percentage);
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectMarketOrder();
     await E.selectDirection('close_short', ctx.tradingMode);
@@ -689,7 +563,7 @@ window.OKXActions = (() => {
     if (!pos.size || pos.size <= 0) throw new Error('청산할 숏 포지션이 없습니다');
 
     const amount = calcAmount(pos.size, ctx.percentage);
-    if (amount <= 0) throw new Error('Calculated amount is 0');
+    if (amount <= 0) throw new Error('계산된 수량이 0입니다');
 
     await E.selectLimitOrder();
     await E.selectDirection('close_short', ctx.tradingMode);
@@ -727,7 +601,7 @@ window.OKXActions = (() => {
    */
   async function execute(actionId, ctx) {
     const fn = ACTION_MAP[actionId];
-    if (!fn) throw new Error(`Unknown action: ${actionId}`);
+    if (!fn) throw new Error(`알 수 없는 액션: ${actionId}`);
     return fn(ctx);
   }
 

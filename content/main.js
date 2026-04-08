@@ -306,7 +306,6 @@
     };
 
     syncDonationMode();
-    console.log('[OKX Hotkey] Settings reloaded from popup');
   });
 
   // ── SPA navigation detection ──────────────────────────────────────────────

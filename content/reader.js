@@ -102,33 +102,6 @@ window.OKXReader = (() => {
   }
 
   /**
-   * Read current position data (futures only).
-   *
-   * Position table uses same .order-table-box structure as open orders.
-   * Direction is inferred from text content of the side column.
-   *
-   * @returns {{ size: number, direction: 'long'|'short'|null }}
-   */
-  function readPosition() {
-    const rows = document.querySelectorAll(S.positionRow);
-    if (!rows.length) return { size: 0, direction: null };
-
-    // Use the first row as a heuristic; full implementation requires column index knowledge
-    const firstRow = rows[0];
-    const text = firstRow.textContent.trim().toLowerCase();
-    let direction = null;
-    if (text.includes('long') || text.includes('buy') || text.includes('多')) {
-      direction = 'long';
-    } else if (text.includes('short') || text.includes('sell') || text.includes('空')) {
-      direction = 'short';
-    }
-
-    const match = text.match(/[\d,]+\.?\d*/);
-    const size = match ? parseFloat(match[0].replace(/,/g, '')) : 0;
-    return { size: isNaN(size) ? 0 : Math.abs(size), direction };
-  }
-
-  /**
    * Read last traded price from span.last.
    * Verified: span.last contains the last trade price (e.g. "71,704.6").
    * @returns {number} Last price, NaN on failure
@@ -220,7 +193,6 @@ window.OKXReader = (() => {
     getOrderForm,
     readAvailableBalance,
     readMaxTrade,
-    readPosition,
     readLastPrice,
     readBestBid,
     readBestAsk,

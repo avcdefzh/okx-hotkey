@@ -3,13 +3,13 @@
  *
  * Non-intrusive bottom-right notifications:
  * - Green for success, red for failure
- * - Auto-dismiss after 2000ms (hard-coded)
+ * - Auto-dismiss after 3000ms (hard-coded)
  * - Doesn't block trading UI
  */
 
 window.OKXOverlay = (() => {
   const CONTAINER_ID = 'okx-hotkey-overlay';
-  const OVERLAY_DURATION = 2000; // ms, hard-coded
+  const OVERLAY_DURATION = 3000; // ms, hard-coded
 
   /**
    * Ensure the toast container exists in the DOM.

@@ -454,7 +454,15 @@ function closeModal() {
 function buildModalGrid() {
   const grid = $('action-type-grid');
   grid.innerHTML = '';
+  let separatorInserted = false;
   for (const typeDef of ACTION_TYPES) {
+    if (!separatorInserted && typeDef.type === 'CLOSE_LONG_MARKET') {
+      const separator = document.createElement('div');
+      separator.className = 'action-type-separator';
+      separator.textContent = '헤지 모드 전용';
+      grid.appendChild(separator);
+      separatorInserted = true;
+    }
     const btn = document.createElement('button');
     btn.className = 'action-type-btn';
     btn.textContent = typeDef.label;

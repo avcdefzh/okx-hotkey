@@ -78,7 +78,7 @@ window.OKXExecutor = (() => {
           return true;
         }
         tab.click();
-        await delay(80);
+        await delay(50);
         return true;
       }
     }
@@ -94,8 +94,7 @@ window.OKXExecutor = (() => {
    */
   async function selectMarketOrder() {
     const ok = await clickTabByText(S.orderTypeTab, 'Market');
-    if (!ok) throw new Error('[OKX Hotkey] selectMarketOrder: Market tab not found');
-    await delay(80);
+    if (!ok) throw new Error('시장가 탭을 찾을 수 없습니다');
   }
 
   /**
@@ -104,8 +103,7 @@ window.OKXExecutor = (() => {
    */
   async function selectLimitOrder() {
     const ok = await clickTabByText(S.orderTypeTab, 'Limit');
-    if (!ok) throw new Error('[OKX Hotkey] selectLimitOrder: Limit tab not found');
-    await delay(80);
+    if (!ok) throw new Error('지정가 탭을 찾을 수 없습니다');
   }
 
   // ── Direction / side selection ────────────────────────────────────────────
@@ -151,7 +149,7 @@ window.OKXExecutor = (() => {
     const tabText = isClose ? 'close' : 'open';
 
     const form = document.querySelector(S.orderForm);
-    if (!form) throw new Error('[OKX Hotkey] selectDirection: order form not found');
+    if (!form) throw new Error('주문 폼을 찾을 수 없습니다');
 
     const tabs = form.querySelectorAll(S.directionTab);
     let found = false;
@@ -215,12 +213,12 @@ window.OKXExecutor = (() => {
    */
   async function fillPrice(price) {
     const form = getOrderForm();
-    if (!form) throw new Error('[OKX Hotkey] fillPrice: order form not found');
+    if (!form) throw new Error('주문 폼을 찾을 수 없습니다');
     const input = findPriceInput(form);
-    if (!input) throw new Error('[OKX Hotkey] fillPrice: price input not found');
+    if (!input) throw new Error('가격 입력란을 찾을 수 없습니다');
     input.focus();
     setInputValue(input, price);
-    await delay(50);
+    await delay(30);
   }
 
   /**
@@ -230,12 +228,12 @@ window.OKXExecutor = (() => {
    */
   async function fillAmount(amount) {
     const form = getOrderForm();
-    if (!form) throw new Error('[OKX Hotkey] fillAmount: order form not found');
+    if (!form) throw new Error('주문 폼을 찾을 수 없습니다');
     const input = findAmountInput(form);
-    if (!input) throw new Error('[OKX Hotkey] fillAmount: amount input not found');
+    if (!input) throw new Error('수량 입력란을 찾을 수 없습니다');
     input.focus();
     setInputValue(input, amount);
-    await delay(50);
+    await delay(30);
   }
 
   // ── Percentage slider ──────────────────────────────────────────────────────
@@ -256,7 +254,7 @@ window.OKXExecutor = (() => {
       const textEl = node.querySelector(S.sliderNodeText);
       if (textEl && textEl.textContent.trim() === target) {
         node.click();
-        await delay(80);
+        await delay(50);
         return true;
       }
     }
@@ -273,11 +271,11 @@ window.OKXExecutor = (() => {
    */
   async function submitBuy() {
     const form = getOrderForm();
-    if (!form) throw new Error('[OKX Hotkey] submitBuy: order form not found');
+    if (!form) throw new Error('주문 폼을 찾을 수 없습니다');
     const btn = form.querySelector(S.submitBuy);
-    if (!btn) throw new Error('[OKX Hotkey] submitBuy: buy button not found');
+    if (!btn) throw new Error('매수 버튼을 찾을 수 없습니다');
     btn.click();
-    await delay(100);
+    await delay(50);
   }
 
   /**
@@ -287,11 +285,11 @@ window.OKXExecutor = (() => {
    */
   async function submitSell() {
     const form = getOrderForm();
-    if (!form) throw new Error('[OKX Hotkey] submitSell: order form not found');
+    if (!form) throw new Error('주문 폼을 찾을 수 없습니다');
     const btn = form.querySelector(S.submitSell);
-    if (!btn) throw new Error('[OKX Hotkey] submitSell: sell button not found');
+    if (!btn) throw new Error('매도 버튼을 찾을 수 없습니다');
     btn.click();
-    await delay(100);
+    await delay(50);
   }
 
   // ── Order management ──────────────────────────────────────────────────────
@@ -301,7 +299,7 @@ window.OKXExecutor = (() => {
    * Retries up to maxAttempts times with interval ms between each.
    * Returns the button element, or throws if not found.
    */
-  async function waitForConfirmButton(maxAttempts = 10, interval = 80) {
+  async function waitForConfirmButton(maxAttempts = 8, interval = 50) {
     for (let i = 0; i < maxAttempts; i++) {
       // Scope search to modal/dialog containers first
       const modals = document.querySelectorAll('.okui-dialog, .okui-modal, [class*="modal"], [class*="dialog"], [role="dialog"]');
@@ -347,7 +345,7 @@ window.OKXExecutor = (() => {
         }
       }
     }
-    if (!cancelBtn) throw new Error('[OKX Hotkey] cancelOrderRow: cancel button not found');
+    if (!cancelBtn) throw new Error('취소 버튼을 찾을 수 없습니다');
     cancelBtn.click();
     const confirmBtn = await waitForConfirmButton();
     if (confirmBtn) {
@@ -378,7 +376,7 @@ window.OKXExecutor = (() => {
           return;
         }
       }
-      throw new Error('[OKX Hotkey] cancelAllOrders: Cancel All button not found');
+      throw new Error('전체 취소 버튼을 찾을 수 없습니다');
     }
     btn.click();
     const confirmBtn = await waitForConfirmButton();
@@ -400,13 +398,14 @@ window.OKXExecutor = (() => {
     const target = tabText.toLowerCase();
     for (const tab of tabs) {
       if (tab.textContent.trim().toLowerCase().includes(target)) {
-        tab.click();
-        await delay(200);
+        if (tab.getAttribute('aria-selected') !== 'true') {
+          tab.click();
+          await delay(100);
+        }
         return true;
       }
     }
-    console.warn('[OKX Hotkey] ensureBottomTab: tab not found for', tabText);
-    return false;
+    throw new Error(`하단 탭을 찾을 수 없습니다: ${tabText}`);
   }
 
   return {
