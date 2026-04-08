@@ -76,6 +76,7 @@ window.OKX_SELECTORS = {
 
   // ── POSITION (futures) ──────────────────────────────────────────────────────
   // Verified from live scrape: position table is in .position-box (NOT .order-table-box).
-  // .order-table-box is for open orders only. No aria-hidden filter needed here.
-  positionRow: '.position-box .okui-table-row',
+  // .order-table-box is for open orders only. aria-hidden="true" rows are hidden measure
+  // rows used for column sizing — must be excluded or rows[0] returns a blank measure row.
+  positionRow: '.position-box .okui-table-row:not([aria-hidden="true"])',
 };

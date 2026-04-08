@@ -162,10 +162,10 @@ body {
   border-color: #3a3e52;
 }
 
-/* Card top row: label, hotkey, pct, sound, delete */
+/* Card top row: handle, label, hotkey, pct, sound, delete */
 .action-card__row {
   display: grid;
-  grid-template-columns: 1fr 140px 68px 68px 32px;
+  grid-template-columns: 20px 1fr 140px 68px 68px 32px;
   align-items: center;
   gap: 8px;
   padding: 9px 10px;
@@ -525,6 +525,30 @@ body {
   background: rgba(231, 76, 60, 0.12);
   color: var(--danger);
   border: 1px solid rgba(231, 76, 60, 0.25);
+}
+
+/* ── Drag and drop ──────────────────────────────────────────────── */
+
+.drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  margin-right: 8px;
+  font-size: 16px;
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.action-card.dragging {
+  opacity: 0.4;
+}
+
+.action-card.drag-over {
+  border-top: 2px solid #4a9eff;
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────── */

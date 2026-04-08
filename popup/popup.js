@@ -118,10 +118,67 @@ function renderActionCard(action) {
   const card = document.createElement('div');
   card.className = 'action-card';
   card.dataset.id = action.id;
+  card.draggable = true;
+
+  // Drag events
+  card.addEventListener('dragstart', (e) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', action.id);
+    // Defer adding class so the drag image captures the normal look
+    requestAnimationFrame(() => card.classList.add('dragging'));
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.querySelectorAll('.action-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+  });
+  card.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.action-card.drag-over').forEach(el => el.classList.remove('drag-over'));
+    card.classList.add('drag-over');
+  });
+  card.addEventListener('dragleave', (e) => {
+    // Only remove if leaving to outside this card
+    if (!card.contains(e.relatedTarget)) {
+      card.classList.remove('drag-over');
+    }
+  });
+  card.addEventListener('drop', (e) => {
+    e.preventDefault();
+    card.classList.remove('drag-over');
+    const draggedId = e.dataTransfer.getData('text/plain');
+    if (draggedId === action.id) return;
+
+    const list = $('actions-list');
+    const draggedCard = list.querySelector(`[data-id="${draggedId}"]`);
+    if (!draggedCard) return;
+
+    // Determine insert position: if mouse is in the bottom half of target, insert after
+    const rect = card.getBoundingClientRect();
+    const insertAfter = e.clientY > rect.top + rect.height / 2;
+
+    if (insertAfter) {
+      card.after(draggedCard);
+    } else {
+      card.before(draggedCard);
+    }
+
+    // Sync currentActions order to match DOM
+    const newOrder = Array.from(list.querySelectorAll('.action-card')).map(c => c.dataset.id);
+    currentActions.sort((a, b) => newOrder.indexOf(a.id) - newOrder.indexOf(b.id));
+  });
 
   // Top row
   const row = document.createElement('div');
   row.className = 'action-card__row';
+
+  // Drag handle
+  const handleEl = document.createElement('span');
+  handleEl.className = 'drag-handle';
+  handleEl.textContent = '\u22EE\u22EE'; // ⋮⋮
+  handleEl.title = '드래그하여 순서 변경';
+  // Prevent handle drag from triggering hotkey recording or other clicks
+  handleEl.addEventListener('mousedown', (e) => e.stopPropagation());
 
   // Label
   const labelEl = document.createElement('span');
@@ -245,6 +302,7 @@ function renderActionCard(action) {
   deleteBtn.textContent = '✕';
   deleteBtn.addEventListener('click', () => removeAction(action.id));
 
+  row.appendChild(handleEl);
   row.appendChild(labelEl);
   row.appendChild(hotkeyEl);
   row.appendChild(pctWrapper);

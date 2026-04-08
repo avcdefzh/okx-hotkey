@@ -67,6 +67,7 @@ window.OKXActions = (() => {
         break;
       }
     }
+    console.log('[OKX Hotkey] getPosition: posCount =', posCount);
     if (posCount === 0) return { size: 0, direction: null };
 
     // Position exists — switch to positions tab and read
@@ -76,25 +77,30 @@ window.OKXActions = (() => {
     // Position table lives in .position-box (NOT .order-table-box which is for orders)
     const S = window.OKX_SELECTORS;
     const rows = document.querySelectorAll(S.positionRow);
+    console.log('[OKX Hotkey] getPosition: rows found =', rows.length);
     if (!rows.length) return { size: 0, direction: null };
 
     const row = rows[0];
     const cells = [...row.querySelectorAll('td')];
 
-    // Size is in cell index 1. Format: "-0.0100 BTC" (negative=short) or "0.0100 BTC" (positive=long)
-    // Direction is determined by the sign of the size value
-    if (cells.length > 1) {
-      const sizeText = cells[1].textContent.trim();
-      const match = sizeText.match(/([-+]?[\d,]+\.?\d*)\s*(BTC|ETH|Cont)/i);
+    // Iterate ALL cells to find Size — column order is user-customizable on OKX
+    // Size cell format: "-0.0100 BTC" (negative=short) or "0.0100 BTC" (positive=long)
+    for (const cell of cells) {
+      const text = cell.textContent.trim();
+      const match = text.match(/^([-+]?[\d,]+\.?\d*)\s*(BTC|ETH|SOL|XRP|DOGE|Cont)/i);
       if (match) {
         const rawSize = parseFloat(match[1].replace(/,/g, ''));
-        return {
-          size: Math.abs(rawSize),
-          direction: rawSize < 0 ? 'short' : 'long'
-        };
+        if (!isNaN(rawSize) && rawSize !== 0) {
+          console.log('[OKX Hotkey] getPosition: found size cell =', text, 'rawSize =', rawSize);
+          return {
+            size: Math.abs(rawSize),
+            direction: rawSize < 0 ? 'short' : 'long'
+          };
+        }
       }
     }
 
+    console.warn('[OKX Hotkey] getPosition: no size cell found in', cells.length, 'cells');
     return { size: 0, direction: null };
   }
 
