@@ -166,7 +166,7 @@ body {
 /* Card top row: handle, label, hotkey, pct, ticks, sound-toggle, delete */
 .action-card__row {
   display: grid;
-  grid-template-columns: 16px 1fr 100px 56px 44px 28px 28px;
+  grid-template-columns: 16px 1fr 100px 56px 52px 28px 28px;
   align-items: center;
   gap: 8px;
   padding: 9px 10px;
@@ -268,8 +268,8 @@ body {
 }
 
 .ticks-input {
-  width: 40px;
-  padding: 5px 22px 5px 6px;
+  width: 48px;
+  padding: 5px 24px 5px 6px;
   font-size: 13px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);

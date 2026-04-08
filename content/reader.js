@@ -199,7 +199,7 @@ window.OKXReader = (() => {
     const buttons = form.querySelectorAll('button');
     for (const btn of buttons) {
       const text = btn.textContent.trim();
-      const match = text.match(/^(\d+)[xX]$/);
+      const match = text.match(/(\d+)\s*[xX](?:\s|$)/);
       if (match) return parseInt(match[1], 10);
     }
     return 1;

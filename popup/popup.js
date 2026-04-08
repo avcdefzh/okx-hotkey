@@ -272,7 +272,7 @@ function renderActionCard(action) {
   ticksInput.type = 'number';
   ticksInput.className = 'ticks-input';
   ticksInput.min = 1;
-  ticksInput.max = 10;
+  ticksInput.max = 100;
   ticksInput.step = 1;
   ticksInput.value = typeDef.hasTicks ? (action.ticks || 1) : 1;
 
@@ -562,7 +562,7 @@ function collectActions() {
 
     const ticksInput = card.querySelector('.ticks-input');
     const rawTicks = ticksInput ? (parseInt(ticksInput.value, 10) || 1) : 0;
-    const ticks = actionTypeDef.hasTicks ? Math.max(1, Math.min(10, rawTicks)) : 0;
+    const ticks = actionTypeDef.hasTicks ? Math.max(1, Math.min(100, rawTicks)) : 0;
 
     return {
       id:        id,

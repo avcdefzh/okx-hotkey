@@ -59,7 +59,9 @@ window.OKXActions = (() => {
     if (unit === 'USDT') return usdtAmount;
     const price = R.readLastPrice();
     if (isNaN(price) || price <= 0) throw new Error('현재가를 읽을 수 없어 단위 변환 실패');
-    return usdtAmount / price;
+    const result = usdtAmount / price;
+    console.log('[OKX Hotkey] convertToInputUnit:', { usdtAmount, unit, price, result });
+    return result;
   }
 
   /**
@@ -78,6 +80,7 @@ window.OKXActions = (() => {
       const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('가용 잔고를 읽을 수 없습니다');
       const leverage = R.readLeverage();
+      console.log('[OKX Hotkey] resolveAmount:', { side, mode: ctx.tradingMode, balance, leverage, seedCap: ctx.seedCap, pct: ctx.percentage });
       let amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0) * leverage;
       return convertToInputUnit(amount);
     }
@@ -87,6 +90,7 @@ window.OKXActions = (() => {
       const counterDir = isBuy ? 'short' : 'long';
       if (pos.direction === counterDir && pos.size > 0) {
         // Closing counter-position — use position size directly, no leverage
+        console.log('[OKX Hotkey] resolveAmount: closing counter-position', { posSize: pos.size, pct: ctx.percentage });
         return calcAmount(pos.size, ctx.percentage);
       }
     }
@@ -95,6 +99,7 @@ window.OKXActions = (() => {
     const balance = R.readAvailableBalance();
     if (isNaN(balance) || balance <= 0) throw new Error('가용 잔고를 읽을 수 없습니다');
     const leverage = ctx.pageType === 'futures' ? R.readLeverage() : 1;
+    console.log('[OKX Hotkey] resolveAmount:', { side, mode: ctx.tradingMode, balance, leverage, seedCap: ctx.seedCap, pct: ctx.percentage });
     let amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0) * leverage;
     return convertToInputUnit(amount);
   }
