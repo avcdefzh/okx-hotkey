@@ -386,40 +386,6 @@ window.OKXActions = (() => {
     return `틱 매도 ${ctx.percentage}% @ ${price}`;
   }
 
-  // ── Action: PARTIAL_CLOSE ────────────────────────────────────────────────
-  /**
-   * Close X% of current position at market.
-   */
-  async function partialClose(ctx) {
-    requirePage(ctx, 'futures');
-    const pos = await getPosition();
-    if (!pos.size || pos.size <= 0) throw new Error('No open position to close');
-
-    const amount = calcAmount(pos.size, ctx.percentage);
-    if (amount <= 0) throw new Error('Calculated close amount is 0');
-
-    await E.selectMarketOrder();
-
-    if (ctx.tradingMode === 'hedge') {
-      const dir = pos.direction === 'long' ? 'close_long' : 'close_short';
-      await E.selectDirection(dir, ctx.tradingMode);
-    } else {
-      // One-way: close by placing opposite order
-      const dir = pos.direction === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(dir, ctx.tradingMode);
-    }
-
-    await E.fillAmount(amount);
-
-    if (pos.direction === 'long') {
-      await E.submitSell();
-    } else {
-      await E.submitBuy();
-    }
-
-    return `${ctx.percentage}% 청산 (${amount}/${pos.size})`;
-  }
-
   // ── Action: CLOSE_PAIR ───────────────────────────────────────────────────
   /**
    * Close 100% of current pair's position at market.
@@ -603,7 +569,6 @@ window.OKXActions = (() => {
     LIMIT_SELL: limitSell,
     TICK_BUY: tickBuy,
     TICK_SELL: tickSell,
-    PARTIAL_CLOSE: partialClose,
     CLOSE_PAIR: closePair,
     CLOSE_ALL: closeAll,
     FLIP: flip,

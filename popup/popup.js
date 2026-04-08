@@ -24,7 +24,6 @@ const ACTION_TYPES = [
   { type: 'LIMIT_SELL',    label: '지정가 매도',      hasPct: true  },
   { type: 'TICK_BUY',      label: '틱 매수',          hasPct: true, hasTicks: true  },
   { type: 'TICK_SELL',     label: '틱 매도',          hasPct: true, hasTicks: true  },
-  { type: 'PARTIAL_CLOSE', label: '부분 청산',        hasPct: true  },
   { type: 'CLOSE_PAIR',    label: '페어 청산',        hasPct: false },
   { type: 'CLOSE_ALL',     label: '전체 청산',        hasPct: false },
   { type: 'FLIP',          label: '포지션 반전',      hasPct: false },
