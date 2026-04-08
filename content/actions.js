@@ -364,7 +364,7 @@ window.OKXActions = (() => {
 
   // ── Action: TICK_BUY ─────────────────────────────────────────────────────
   /**
-   * Limit buy X% at best bid + 1 tick (favorable queue position).
+   * Limit buy X% at best bid - N ticks (maker queue).
    */
   async function tickBuy(ctx) {
     requirePage(ctx, 'any');
@@ -373,7 +373,7 @@ window.OKXActions = (() => {
     const tickSize = R.readTickSize();
     const tick = isNaN(tickSize) ? 0.01 : tickSize;
     const ticks = ctx.ticks || 1;
-    const price = parseFloat((bestBid + tick * ticks).toFixed(String(tick).split('.')[1]?.length || 2));
+    const price = parseFloat((bestBid - tick * ticks).toFixed(String(tick).split('.')[1]?.length || 2));
     ctx.targetPrice = price;
     const amount = await resolveAmount(ctx, 'buy');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
@@ -405,7 +405,7 @@ window.OKXActions = (() => {
 
   // ── Action: TICK_SELL ────────────────────────────────────────────────────
   /**
-   * Limit sell X% at best ask - 1 tick.
+   * Limit sell X% at best ask + N ticks (maker queue).
    */
   async function tickSell(ctx) {
     requirePage(ctx, 'any');
@@ -414,7 +414,7 @@ window.OKXActions = (() => {
     const tickSize = R.readTickSize();
     const tick = isNaN(tickSize) ? 0.01 : tickSize;
     const ticks = ctx.ticks || 1;
-    const price = parseFloat((bestAsk - tick * ticks).toFixed(String(tick).split('.')[1]?.length || 2));
+    const price = parseFloat((bestAsk + tick * ticks).toFixed(String(tick).split('.')[1]?.length || 2));
     ctx.targetPrice = price;
     const amount = await resolveAmount(ctx, 'sell');
     if (amount <= 0) throw new Error('계산된 수량이 0입니다');
