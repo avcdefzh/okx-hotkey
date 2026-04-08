@@ -7,13 +7,16 @@
  *   - futures: /trade-futures/
  *
  * Trading modes (futures/swap only):
- *   - one-way: single position per instrument
- *   - hedge:   separate long/short positions
+ *   - one-way: direction tabs show "Buy" / "Sell"
+ *   - hedge:   direction tabs show "Open" / "Close"
  */
 
 window.OKXDetector = (() => {
+  const S = window.OKX_SELECTORS;
+
   /**
-   * Detect the page type from the URL.
+   * Detect the page type from the URL pathname.
+   * Verified: OKX uses these stable path segments.
    * @returns {'spot'|'futures'|'unknown'}
    */
   function detectPageType() {
@@ -24,27 +27,28 @@ window.OKXDetector = (() => {
   }
 
   /**
-   * Detect trading mode by checking for hedge-mode-specific DOM elements.
-   * Hedge mode shows "Open Long" / "Open Short" / "Close Long" / "Close Short" tabs.
-   * One-way mode shows simple "Buy" / "Sell".
+   * Detect trading mode by inspecting direction tab text content.
+   *
+   * Verified DOM: direction tabs use .okui-tabs-pane-segmented[role="tab"].
+   *   - Hedge mode:   tabs read "Open" and "Close"
+   *   - One-way mode: tabs read "Buy" and "Sell"
+   *
+   * This is more reliable than checking for a hedge-mode indicator element
+   * because OKX does not expose a dedicated hedge-mode class at the form level.
    *
    * @returns {'hedge'|'one-way'|'unknown'}
    */
   function detectTradingMode() {
-    // TODO: verify hedge mode indicator selector on live OKX page
-    const hedgeEl = document.querySelector(window.OKX_SELECTORS.common.hedgeModeIndicator);
-    if (hedgeEl) return 'hedge';
+    const directionTabs = document.querySelectorAll(S.directionTab);
+    if (!directionTabs.length) return 'unknown';
 
-    // Fallback: check for open-long tab by text content
-    const allButtons = document.querySelectorAll('button, [role="tab"]');
-    for (const btn of allButtons) {
-      const text = btn.textContent.trim().toLowerCase();
-      if (text === 'open long' || text === 'open short' || text === '开多' || text === '开空') {
-        return 'hedge';
-      }
+    for (const tab of directionTabs) {
+      const text = tab.textContent.trim().toLowerCase();
+      if (text === 'open' || text === 'close') return 'hedge';
+      if (text === 'buy' || text === 'sell') return 'one-way';
     }
 
-    return 'one-way';
+    return 'unknown';
   }
 
   /**

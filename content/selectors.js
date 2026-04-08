@@ -1,128 +1,91 @@
 /**
  * selectors.js — Centralized OKX DOM selector config
  *
- * ALL selectors are placeholders pending verification on live OKX page.
- * Update this file when OKX changes their DOM — no other files need changing.
+ * Selectors verified via headless Chrome scraping of live OKX pages.
+ * OKX uses the okui-* design system. Key stability notes:
+ *   - okui-* class names are stable (design system, not build artifacts)
+ *   - data-testid attributes are stable
+ *   - Hash-suffixed IDs like #_r_4o_ are NOT stable — never use them
+ *   - Hash-suffixed classes like index_availableRow__H1d0q are NOT stable — use data-testid
+ *   - Inputs are identified by accessibility label text, not IDs
  *
- * Inspection tips:
- *   1. Open DevTools on https://www.okx.com/trade-spot/btc-usdt
- *   2. Use "Inspect element" on target UI components
- *   3. Prefer data-testid > aria-label > class-based (in that order for stability)
+ * Update this file when OKX changes their DOM — no other files need changing.
  */
 
 // Expose as global since content scripts can't use ES module imports
 window.OKX_SELECTORS = {
-  // ── SPOT ────────────────────────────────────────────────────────────────────
-  spot: {
-    // Available balance display (USDT for buy side, asset for sell side)
-    // TODO: verify on live OKX spot page
-    availableBalance: '[class*="tradePanel"] [class*="available"] [class*="value"]',
+  // ── FORM CONTAINER ──────────────────────────────────────────────────────────
+  // The main order form. #leftPoForm is stable; .common-form-box is fallback.
+  orderForm: '#leftPoForm, .common-form-box',
 
-    // Order type tabs
-    // TODO: verify on live OKX spot page
-    limitTab: '[data-testid="limit-order-tab"], [class*="orderType"] [class*="limit"]',
-    marketTab: '[data-testid="market-order-tab"], [class*="orderType"] [class*="market"]',
+  // ── INPUT IDENTIFICATION ────────────────────────────────────────────────────
+  // OKX uses okui-a11y-text labels to identify inputs semantically.
+  // Text content " price" identifies the price input's label.
+  // Text content " size" identifies the amount/size input's label.
+  // Use findInputByLabel() in reader.js / executor.js to locate the actual input.
+  inputLabel: '.okui-a11y-text',   // label element — check textContent for " price" or " size"
+  inputField: '.okui-input-input', // the actual <input> element inside .okui-input
 
-    // Price input (for limit orders)
-    // TODO: verify on live OKX spot page
-    priceInput: '[class*="tradePanel"] [class*="priceInput"] input, [placeholder*="Price"]',
+  // ── DIRECTION TABS (Buy/Sell or Open/Close) ─────────────────────────────────
+  // Segmented control tabs for trade direction.
+  // Text content determines which: "Buy"/"Sell" (one-way) or "Open"/"Close" (hedge).
+  // Use text-content matching to click the correct tab.
+  directionTab: '.okui-tabs-pane-segmented[role="tab"]',
+  activeDirectionTab: '.okui-tabs-pane-segmented-active',
 
-    // Quantity/amount input
-    // TODO: verify on live OKX spot page
-    amountInput: '[class*="tradePanel"] [class*="amountInput"] input, [class*="sizeInput"] input',
+  // ── ORDER TYPE TABS (Limit / Market / TP-SL) ────────────────────────────────
+  // Underline-style tabs for order type.
+  // Text content: "Limit", "Market", "TP/SL"
+  // Use text-content matching to click the correct tab.
+  orderTypeTab: '.okui-tabs-pane-underline[role="tab"]',
+  activeOrderTypeTab: '.okui-tabs-pane-underline-active',
 
-    // Buy / Sell submit buttons
-    // TODO: verify on live OKX spot page
-    buyButton: '[class*="tradePanel"] [class*="buyBtn"], button[class*="buy"][class*="submit"]',
-    sellButton: '[class*="tradePanel"] [class*="sellBtn"], button[class*="sell"][class*="submit"]',
+  // ── BALANCE ─────────────────────────────────────────────────────────────────
+  // data-testid is stable and preferred over hash-suffixed class names.
+  // "max-asset" element text: "Available 1,234.56 USDT" — parse the number.
+  availableBalance: '[data-testid="max-asset"]',
+  // "max-trade" element text: "Max buy -- BTC" (spot) or "Max long -- Contracts" (futures).
+  // Inner spans: .index_text__* for label, .index_value__* for value — but class hashes are NOT stable.
+  // Parse the numeric portion from maxTrade.textContent directly.
+  maxTrade: '[data-testid="max-trade"]',
 
-    // Percentage slider quick-select buttons (25%, 50%, etc.)
-    // TODO: verify on live OKX spot page
-    percentageStepper: '[class*="tradePanel"] [class*="slider"] [class*="step"]',
-  },
+  // ── PERCENTAGE SLIDER ───────────────────────────────────────────────────────
+  // Slider percentage quick-select nodes (0%, 25%, 50%, 75%, 100%).
+  // Click the node container; text content is inside the nested span.
+  sliderNode: '.okui-slider-mark-node',
+  sliderNodeText: '.okui-slider-mark-node-text',
 
-  // ── FUTURES / SWAP ───────────────────────────────────────────────────────────
-  futures: {
-    // Available margin / balance
-    // TODO: verify on live OKX futures page
-    availableBalance: '[class*="tradePanel"] [class*="available"] [class*="value"], [class*="availableMargin"]',
+  // ── ORDER BOOK ──────────────────────────────────────────────────────────────
+  // Best bid/ask selectors need a logged-in session to fully verify.
+  // Using structural best-guess; update after verifying on logged-in page.
+  // Strategy: find order book container, then first bid/ask price row.
+  bestBid: '[class*="orderBook"] [class*="bid"]:first-child [class*="price"]',
+  bestAsk: '[class*="orderBook"] [class*="ask"]:first-child [class*="price"]',
 
-    // Current position size (quantity in contracts or coins)
-    // TODO: verify on live OKX futures page
-    positionSize: '[class*="positionTable"] [class*="positionSize"], [class*="positions"] [class*="size"]',
+  // ── OPEN ORDERS ─────────────────────────────────────────────────────────────
+  // Order table rows — needs logged-in session to fully verify.
+  // Strategy: find rows in the current orders / open orders panel.
+  orderRow: '[class*="openOrders"] [class*="orderRow"], [class*="currentOrders"] tr[class*="row"]',
 
-    // Position direction (long/short) — look for text content "long" / "short"
-    // TODO: verify on live OKX futures page
-    positionDirection: '[class*="positionTable"] [class*="side"], [class*="positions"] [class*="direction"]',
+  // Cancel button within an order row — needs logged-in session to verify.
+  // Fallback: find button with text "Cancel" within the row.
+  cancelButton: '[class*="cancelBtn"], button[aria-label*="Cancel"]',
 
-    // Hedge mode: tab selectors for open/close long/short
-    // TODO: verify on live OKX futures hedge-mode page
-    openLongTab: '[data-testid="open-long-tab"], [class*="openLong"], [aria-label*="Open Long"]',
-    openShortTab: '[data-testid="open-short-tab"], [class*="openShort"], [aria-label*="Open Short"]',
-    closeLongTab: '[data-testid="close-long-tab"], [class*="closeLong"], [aria-label*="Close Long"]',
-    closeShortTab: '[data-testid="close-short-tab"], [class*="closeShort"], [aria-label*="Close Short"]',
+  // Cancel all orders button — needs logged-in session to verify.
+  // Fallback: text-content search for "Cancel All" in cancelAllOrders().
+  cancelAllButton: '[data-testid="cancel-all-orders"], button[class*="cancelAll"]',
 
-    // One-way mode: simple buy/sell
-    // TODO: verify on live OKX futures one-way page
-    buyTab: '[data-testid="buy-tab"], [class*="tradeDirection"] [class*="buy"]',
-    sellTab: '[data-testid="sell-tab"], [class*="tradeDirection"] [class*="sell"]',
+  // Chase button on unfilled limit orders — needs logged-in session to verify.
+  chaseButton: '[data-testid="chase-order"], button[class*="chase"], [aria-label*="Chase"]',
 
-    // Order type tabs
-    // TODO: verify on live OKX futures page
-    limitTab: '[data-testid="limit-order-tab"], [class*="orderType"] [class*="limit"]',
-    marketTab: '[data-testid="market-order-tab"], [class*="orderType"] [class*="market"]',
+  // ── POSITION (futures) ──────────────────────────────────────────────────────
+  // Position panel — needs logged-in session to fully verify.
+  // Strategy: find rows in the position table, match side column text for long/short.
+  positionSize: '[class*="positionTable"] [class*="positionSize"], [class*="positions"] [class*="size"]',
+  positionDirection: '[class*="positionTable"] [class*="side"], [class*="positions"] [class*="direction"]',
 
-    // Price input
-    // TODO: verify on live OKX futures page
-    priceInput: '[class*="tradePanel"] [class*="priceInput"] input',
-
-    // Quantity input
-    // TODO: verify on live OKX futures page
-    amountInput: '[class*="tradePanel"] [class*="amountInput"] input, [class*="sizeInput"] input',
-
-    // Submit buttons (hedge mode uses one confirm button after tab selection)
-    // TODO: verify on live OKX futures page
-    confirmButton: '[class*="tradePanel"] [class*="confirmBtn"], [class*="tradePanel"] button[type="submit"]',
-    buyButton: '[class*="tradePanel"] [class*="buyBtn"]',
-    sellButton: '[class*="tradePanel"] [class*="sellBtn"]',
-  },
-
-  // ── COMMON (applies to all trade pages) ────────────────────────────────────
-  common: {
-    // Best bid price (top of order book, buy side)
-    // TODO: verify on live OKX page
-    bestBid: '[class*="orderBook"] [class*="bid"]:first-child [class*="price"], [class*="bestBid"] [class*="price"]',
-
-    // Best ask price (top of order book, sell side)
-    // TODO: verify on live OKX page
-    bestAsk: '[class*="orderBook"] [class*="ask"]:first-child [class*="price"], [class*="bestAsk"] [class*="price"]',
-
-    // Tick size / min price increment — often in trading pair info
-    // TODO: verify on live OKX page
-    tickSize: '[class*="instrumentInfo"] [class*="tickSize"], [data-testid="tick-size"]',
-
-    // Open orders table rows
-    // TODO: verify on live OKX page
-    orderRow: '[class*="openOrders"] [class*="orderRow"], [class*="currentOrders"] tr[class*="row"]',
-
-    // Cancel button within an order row
-    // TODO: verify on live OKX page
-    cancelButton: '[class*="cancelBtn"], button[aria-label*="Cancel"]',
-
-    // Cancel all orders button
-    // TODO: verify on live OKX page
-    cancelAllButton: '[data-testid="cancel-all-orders"], button[class*="cancelAll"]',
-
-    // Chase button on unfilled limit order rows (moves order to best bid/ask)
-    // TODO: verify on live OKX page
-    chaseButton: '[data-testid="chase-order"], button[class*="chase"], [aria-label*="Chase"]',
-
-    // Hedge mode indicator: unique element only present in hedge mode
-    // TODO: verify on live OKX page
-    hedgeModeIndicator: '[class*="openLong"], [data-testid="hedge-mode"], [class*="hedgeMode"]',
-
-    // Current instrument price / last trade price
-    // TODO: verify on live OKX page
-    lastPrice: '[class*="lastPrice"] [class*="value"], [class*="indexPrice"]',
-  }
+  // ── LAST PRICE / TICK SIZE ──────────────────────────────────────────────────
+  // These need verification on logged-in page; structural selectors used as fallback.
+  lastPrice: '[class*="lastPrice"] [class*="value"], [class*="indexPrice"]',
+  tickSize: '[class*="instrumentInfo"] [class*="tickSize"], [data-testid="tick-size"]',
 };

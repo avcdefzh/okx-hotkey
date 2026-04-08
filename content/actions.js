@@ -56,23 +56,22 @@ window.OKXActions = (() => {
    */
   async function marketBuy(ctx) {
     requirePage(ctx, 'any');
-    const balance = R.readAvailableBalance(ctx.pageType);
+    const balance = R.readAvailableBalance();
     if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
 
     const amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
     if (amount <= 0) throw new Error(`Calculated amount is 0 (balance: ${balance}, pct: ${ctx.percentage}%)`);
 
-    await E.selectMarketOrder(ctx.pageType);
+    await E.selectMarketOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_long', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('open_long', ctx.tradingMode);
     } else {
-      // spot or one-way futures: select buy side
-      await E.selectDirection('buy', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('buy', ctx.tradingMode);
     }
 
-    await E.fillAmount(ctx.pageType, amount);
-    await E.submitBuy(ctx.pageType);
+    await E.fillAmount(amount);
+    await E.submitBuy();
 
     return `시장가 매수 ${ctx.percentage}% (${amount})`;
   }
@@ -90,28 +89,28 @@ window.OKXActions = (() => {
       if (!pos.size || pos.size <= 0) throw new Error('No open position to sell');
       amount = calcAmount(pos.size, ctx.percentage);
     } else {
-      const balance = R.readAvailableBalance(ctx.pageType);
+      const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
     }
 
     if (amount <= 0) throw new Error('Calculated sell amount is 0');
 
-    await E.selectMarketOrder(ctx.pageType);
+    await E.selectMarketOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
       const pos = R.readPosition();
       if (pos.direction === 'long') {
-        await E.selectDirection('close_long', ctx.pageType, ctx.tradingMode);
+        await E.selectDirection('close_long', ctx.tradingMode);
       } else {
-        await E.selectDirection('close_short', ctx.pageType, ctx.tradingMode);
+        await E.selectDirection('close_short', ctx.tradingMode);
       }
     } else {
-      await E.selectDirection('sell', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('sell', ctx.tradingMode);
     }
 
-    await E.fillAmount(ctx.pageType, amount);
-    await E.submitSell(ctx.pageType);
+    await E.fillAmount(amount);
+    await E.submitSell();
 
     return `시장가 매도 ${ctx.percentage}% (${amount})`;
   }
@@ -122,22 +121,22 @@ window.OKXActions = (() => {
    */
   async function limitBuy(ctx) {
     requirePage(ctx, 'any');
-    const balance = R.readAvailableBalance(ctx.pageType);
+    const balance = R.readAvailableBalance();
     if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
 
     const amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
     if (amount <= 0) throw new Error('Calculated amount is 0');
 
-    await E.selectLimitOrder(ctx.pageType);
+    await E.selectLimitOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_long', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('open_long', ctx.tradingMode);
     } else {
-      await E.selectDirection('buy', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('buy', ctx.tradingMode);
     }
 
-    await E.fillAmount(ctx.pageType, amount);
-    await E.submitBuy(ctx.pageType);
+    await E.fillAmount(amount);
+    await E.submitBuy();
 
     return `지정가 매수 ${ctx.percentage}% (${amount})`;
   }
@@ -155,24 +154,24 @@ window.OKXActions = (() => {
       if (!pos.size || pos.size <= 0) throw new Error('No open position to sell');
       amount = calcAmount(pos.size, ctx.percentage);
     } else {
-      const balance = R.readAvailableBalance(ctx.pageType);
+      const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
     }
 
     if (amount <= 0) throw new Error('Calculated sell amount is 0');
 
-    await E.selectLimitOrder(ctx.pageType);
+    await E.selectLimitOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
       const pos = R.readPosition();
-      await E.selectDirection(pos.direction === 'long' ? 'close_long' : 'close_short', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(pos.direction === 'long' ? 'close_long' : 'close_short', ctx.tradingMode);
     } else {
-      await E.selectDirection('sell', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('sell', ctx.tradingMode);
     }
 
-    await E.fillAmount(ctx.pageType, amount);
-    await E.submitSell(ctx.pageType);
+    await E.fillAmount(amount);
+    await E.submitSell();
 
     return `지정가 매도 ${ctx.percentage}% (${amount})`;
   }
@@ -183,7 +182,7 @@ window.OKXActions = (() => {
    */
   async function tickBuy(ctx) {
     requirePage(ctx, 'any');
-    const balance = R.readAvailableBalance(ctx.pageType);
+    const balance = R.readAvailableBalance();
     if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
 
     const bestBid = R.readBestBid();
@@ -196,17 +195,17 @@ window.OKXActions = (() => {
     const amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
     if (amount <= 0) throw new Error('Calculated amount is 0');
 
-    await E.selectLimitOrder(ctx.pageType);
+    await E.selectLimitOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      await E.selectDirection('open_long', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('open_long', ctx.tradingMode);
     } else {
-      await E.selectDirection('buy', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('buy', ctx.tradingMode);
     }
 
-    await E.fillPrice(ctx.pageType, price);
-    await E.fillAmount(ctx.pageType, amount);
-    await E.submitBuy(ctx.pageType);
+    await E.fillPrice(price);
+    await E.fillAmount(amount);
+    await E.submitBuy();
 
     return `틱 매수 ${ctx.percentage}% @ ${price}`;
   }
@@ -224,7 +223,7 @@ window.OKXActions = (() => {
       if (!pos.size || pos.size <= 0) throw new Error('No open position to sell');
       amount = calcAmount(pos.size, ctx.percentage);
     } else {
-      const balance = R.readAvailableBalance(ctx.pageType);
+      const balance = R.readAvailableBalance();
       if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
       amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
     }
@@ -238,18 +237,18 @@ window.OKXActions = (() => {
 
     if (amount <= 0) throw new Error('Calculated sell amount is 0');
 
-    await E.selectLimitOrder(ctx.pageType);
+    await E.selectLimitOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
       const pos = R.readPosition();
-      await E.selectDirection(pos.direction === 'long' ? 'close_long' : 'close_short', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(pos.direction === 'long' ? 'close_long' : 'close_short', ctx.tradingMode);
     } else {
-      await E.selectDirection('sell', ctx.pageType, ctx.tradingMode);
+      await E.selectDirection('sell', ctx.tradingMode);
     }
 
-    await E.fillPrice(ctx.pageType, price);
-    await E.fillAmount(ctx.pageType, amount);
-    await E.submitSell(ctx.pageType);
+    await E.fillPrice(price);
+    await E.fillAmount(amount);
+    await E.submitSell();
 
     return `틱 매도 ${ctx.percentage}% @ ${price}`;
   }
@@ -266,23 +265,23 @@ window.OKXActions = (() => {
     const amount = calcAmount(pos.size, ctx.percentage);
     if (amount <= 0) throw new Error('Calculated close amount is 0');
 
-    await E.selectMarketOrder(ctx.pageType);
+    await E.selectMarketOrder();
 
     if (ctx.tradingMode === 'hedge') {
       const dir = pos.direction === 'long' ? 'close_long' : 'close_short';
-      await E.selectDirection(dir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(dir, ctx.tradingMode);
     } else {
       // One-way: close by placing opposite order
       const dir = pos.direction === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(dir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(dir, ctx.tradingMode);
     }
 
-    await E.fillAmount(ctx.pageType, amount);
+    await E.fillAmount(amount);
 
     if (pos.direction === 'long') {
-      await E.submitSell(ctx.pageType);
+      await E.submitSell();
     } else {
-      await E.submitBuy(ctx.pageType);
+      await E.submitBuy();
     }
 
     return `${ctx.percentage}% 청산 (${amount}/${pos.size})`;
@@ -297,22 +296,22 @@ window.OKXActions = (() => {
     const pos = R.readPosition();
     if (!pos.size || pos.size <= 0) throw new Error('No open position to close');
 
-    await E.selectMarketOrder(ctx.pageType);
+    await E.selectMarketOrder();
 
     if (ctx.tradingMode === 'hedge') {
       const dir = pos.direction === 'long' ? 'close_long' : 'close_short';
-      await E.selectDirection(dir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(dir, ctx.tradingMode);
     } else {
       const dir = pos.direction === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(dir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(dir, ctx.tradingMode);
     }
 
-    await E.fillAmount(ctx.pageType, pos.size);
+    await E.fillAmount(pos.size);
 
     if (pos.direction === 'long') {
-      await E.submitSell(ctx.pageType);
+      await E.submitSell();
     } else {
-      await E.submitBuy(ctx.pageType);
+      await E.submitBuy();
     }
 
     return `페어 전체 청산 (${pos.size})`;
@@ -361,38 +360,38 @@ window.OKXActions = (() => {
     const originalDirection = pos.direction;
 
     // Step 1: Close current position
-    await E.selectMarketOrder(ctx.pageType);
+    await E.selectMarketOrder();
     if (ctx.tradingMode === 'hedge') {
       const closeDir = originalDirection === 'long' ? 'close_long' : 'close_short';
-      await E.selectDirection(closeDir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(closeDir, ctx.tradingMode);
     } else {
       const closeDir = originalDirection === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(closeDir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(closeDir, ctx.tradingMode);
     }
-    await E.fillAmount(ctx.pageType, originalSize);
+    await E.fillAmount(originalSize);
     if (originalDirection === 'long') {
-      await E.submitSell(ctx.pageType);
+      await E.submitSell();
     } else {
-      await E.submitBuy(ctx.pageType);
+      await E.submitBuy();
     }
 
     // Step 2: Wait for close to register
     await E.delay(500);
 
     // Step 3: Open opposite position
-    await E.selectMarketOrder(ctx.pageType);
+    await E.selectMarketOrder();
     if (ctx.tradingMode === 'hedge') {
       const openDir = originalDirection === 'long' ? 'open_short' : 'open_long';
-      await E.selectDirection(openDir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(openDir, ctx.tradingMode);
     } else {
       const openDir = originalDirection === 'long' ? 'sell' : 'buy';
-      await E.selectDirection(openDir, ctx.pageType, ctx.tradingMode);
+      await E.selectDirection(openDir, ctx.tradingMode);
     }
-    await E.fillAmount(ctx.pageType, originalSize);
+    await E.fillAmount(originalSize);
     if (originalDirection === 'long') {
-      await E.submitSell(ctx.pageType);
+      await E.submitSell();
     } else {
-      await E.submitBuy(ctx.pageType);
+      await E.submitBuy();
     }
 
     const newDir = originalDirection === 'long' ? '숏' : '롱';
@@ -438,10 +437,10 @@ window.OKXActions = (() => {
 
     const row = rows[0]; // Most recent order is first row
 
-    // Try the dedicated chase button selector first
+    // Try the dedicated chase button selector first.
+    // Chase button needs logged-in session to fully verify; using structural selector.
     const S = window.OKX_SELECTORS;
-    // TODO: verify chase button selector on live OKX page
-    let chaseBtn = row.querySelector(S.common.chaseButton.split(',')[0].trim());
+    let chaseBtn = row.querySelector(S.chaseButton.split(',')[0].trim());
 
     if (!chaseBtn) {
       // Fallback: find button with "chase" text in the row
