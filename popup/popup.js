@@ -108,6 +108,24 @@ function eventToHotkey(e) {
   };
 }
 
+/**
+ * Check if a hotkey combo is already used by another action.
+ * @param {object} hotkey
+ * @param {string} excludeId — action ID to exclude (the one being edited)
+ * @returns {string|null} — label of the conflicting action, or null if no conflict
+ */
+function findHotkeyConflict(hotkey, excludeId) {
+  if (!hotkey || !hotkey.key) return null;
+  const combo = formatHotkey(hotkey);
+  for (const action of currentActions) {
+    if (action.id === excludeId) continue;
+    if (action.hotkey && formatHotkey(action.hotkey) === combo) {
+      return action.label;
+    }
+  }
+  return null;
+}
+
 // ── Action card rendering ──────────────────────────────────────────────────────
 
 /**
@@ -376,10 +394,19 @@ function startRecording(actionId, el) {
 }
 
 function stopRecording(actionId, el, hotkey) {
+  const conflict = findHotkeyConflict(hotkey, actionId);
+  if (conflict) {
+    showFeedback(`이미 "${conflict}"에서 사용 중인 단축키입니다`, 'error');
+    cancelRecording(actionId, el);
+    return;
+  }
   recordingId = null;
   el.classList.remove('recording');
   el.dataset.hotkey = JSON.stringify(hotkey);
   el.textContent = formatHotkey(hotkey);
+  // Sync in-memory action so future conflict checks see this hotkey
+  const action = currentActions.find(a => a.id === actionId);
+  if (action) action.hotkey = hotkey;
 }
 
 function cancelRecording(actionId, el) {
@@ -675,24 +702,10 @@ $('btn-save').addEventListener('click', async () => {
       return;
     }
 
-    // M3: Duplicate hotkey detection (warning only, does not block save)
-    const combos = settings.actions
-      .map(a => a.hotkey && a.hotkey.key ? formatHotkey(a.hotkey) : null)
-      .filter(c => c && c !== '(없음)');
-    const seen = new Set();
-    const duplicates = new Set();
-    for (const combo of combos) {
-      if (seen.has(combo)) duplicates.add(combo);
-      else seen.add(combo);
-    }
-    if (duplicates.size > 0) {
-      showFeedback(`중복 단축키가 있습니다: ${[...duplicates].join(', ')}`, 'error');
-    }
-
     // Sync currentActions with collected (ensures sound data is preserved)
     currentActions = settings.actions;
     await saveSettings(settings);
-    if (duplicates.size === 0) showFeedback('설정 저장 완료', 'success');
+    showFeedback('설정 저장 완료', 'success');
   } catch (err) {
     showFeedback(`저장 실패: ${err.message}`, 'error');
   }

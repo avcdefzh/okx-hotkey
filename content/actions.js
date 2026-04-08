@@ -425,8 +425,13 @@ window.OKXActions = (() => {
   async function cancelLast(ctx) {
     requirePage(ctx, 'any');
     await E.ensureBottomTab('open orders');
-    const rows = R.readOrderRows();
-    if (rows.length === 0) throw new Error('미체결 주문 없음');
+    let rows;
+    for (let i = 0; i < 8; i++) {
+      rows = R.readOrderRows();
+      if (rows.length > 0) break;
+      await E.delay(50);
+    }
+    if (!rows || rows.length === 0) throw new Error('미체결 주문 없음');
 
     // Most recent order is typically the first row
     await E.cancelOrderRow(rows[0]);
@@ -440,8 +445,13 @@ window.OKXActions = (() => {
   async function cancelAll(ctx) {
     requirePage(ctx, 'any');
     await E.ensureBottomTab('open orders');
-    const rows = R.readOrderRows();
-    if (rows.length === 0) throw new Error('미체결 주문 없음');
+    let rows;
+    for (let i = 0; i < 8; i++) {
+      rows = R.readOrderRows();
+      if (rows.length > 0) break;
+      await E.delay(50);
+    }
+    if (!rows || rows.length === 0) throw new Error('미체결 주문 없음');
 
     await E.cancelAllOrders();
     return `전체 주문 취소 (${rows.length}건)`;
@@ -455,8 +465,13 @@ window.OKXActions = (() => {
   async function chaseOrder(ctx) {
     requirePage(ctx, 'any');
     await E.ensureBottomTab('open orders');
-    const rows = R.readOrderRows();
-    if (rows.length === 0) throw new Error('미체결 주문 없음');
+    let rows;
+    for (let i = 0; i < 8; i++) {
+      rows = R.readOrderRows();
+      if (rows.length > 0) break;
+      await E.delay(50);
+    }
+    if (!rows || rows.length === 0) throw new Error('미체결 주문 없음');
 
     const row = rows[0]; // Most recent order is first row
 

@@ -78,7 +78,7 @@ window.OKXExecutor = (() => {
           return true;
         }
         tab.click();
-        await delay(50);
+        await delay(80);
         return true;
       }
     }
@@ -95,6 +95,7 @@ window.OKXExecutor = (() => {
   async function selectMarketOrder() {
     const ok = await clickTabByText(S.orderTypeTab, 'Market');
     if (!ok) throw new Error('시장가 탭을 찾을 수 없습니다');
+    await delay(80);
   }
 
   /**
@@ -104,6 +105,7 @@ window.OKXExecutor = (() => {
   async function selectLimitOrder() {
     const ok = await clickTabByText(S.orderTypeTab, 'Limit');
     if (!ok) throw new Error('지정가 탭을 찾을 수 없습니다');
+    await delay(80);
   }
 
   // ── Direction / side selection ────────────────────────────────────────────
@@ -218,7 +220,7 @@ window.OKXExecutor = (() => {
     if (!input) throw new Error('가격 입력란을 찾을 수 없습니다');
     input.focus();
     setInputValue(input, price);
-    await delay(30);
+    await delay(50);
   }
 
   /**
@@ -233,7 +235,7 @@ window.OKXExecutor = (() => {
     if (!input) throw new Error('수량 입력란을 찾을 수 없습니다');
     input.focus();
     setInputValue(input, amount);
-    await delay(30);
+    await delay(50);
   }
 
   // ── Percentage slider ──────────────────────────────────────────────────────
@@ -254,7 +256,7 @@ window.OKXExecutor = (() => {
       const textEl = node.querySelector(S.sliderNodeText);
       if (textEl && textEl.textContent.trim() === target) {
         node.click();
-        await delay(50);
+        await delay(80);
         return true;
       }
     }
@@ -275,7 +277,7 @@ window.OKXExecutor = (() => {
     const btn = form.querySelector(S.submitBuy);
     if (!btn) throw new Error('매수 버튼을 찾을 수 없습니다');
     btn.click();
-    await delay(50);
+    await delay(100);
   }
 
   /**
@@ -289,7 +291,7 @@ window.OKXExecutor = (() => {
     const btn = form.querySelector(S.submitSell);
     if (!btn) throw new Error('매도 버튼을 찾을 수 없습니다');
     btn.click();
-    await delay(50);
+    await delay(100);
   }
 
   // ── Order management ──────────────────────────────────────────────────────
@@ -400,7 +402,7 @@ window.OKXExecutor = (() => {
       if (tab.textContent.trim().toLowerCase().includes(target)) {
         if (tab.getAttribute('aria-selected') !== 'true') {
           tab.click();
-          await delay(100);
+          await delay(200);
         }
         return true;
       }
