@@ -222,7 +222,7 @@ window.OKXActions = (() => {
       }
     }
 
-    console.warn('[OKX Hotkey] getPosition: no matching position found');
+    console.log('[OKX Hotkey] getPosition: no matching position found');
     return { size: 0, direction: null, isProfit: null };
   }
 
