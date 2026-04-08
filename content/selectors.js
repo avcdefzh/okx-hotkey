@@ -7,7 +7,7 @@
  *   - data-testid attributes are stable
  *   - Hash-suffixed IDs like #_r_4o_ are NOT stable — never use them
  *   - Hash-suffixed classes like index_availableRow__H1d0q are NOT stable — use data-testid
- *   - Inputs are identified by accessibility label text, not IDs
+ *   - Price input identified by .price-input container class; amount by exclusion
  *
  * Update this file when OKX changes their DOM — no other files need changing.
  */
@@ -15,77 +15,67 @@
 // Expose as global since content scripts can't use ES module imports
 window.OKX_SELECTORS = {
   // ── FORM CONTAINER ──────────────────────────────────────────────────────────
-  // The main order form. #leftPoForm is stable; .common-form-box is fallback.
-  orderForm: '#leftPoForm, .common-form-box',
+  // Verified: .place-order-container-common wraps the entire trading panel
+  orderForm: '.place-order-container-common',
 
   // ── INPUT IDENTIFICATION ────────────────────────────────────────────────────
-  // OKX uses okui-a11y-text labels to identify inputs semantically.
-  // Text content " price" identifies the price input's label.
-  // Text content " size" identifies the amount/size input's label.
-  // Use findInputByLabel() in reader.js / executor.js to locate the actual input.
-  inputLabel: '.okui-a11y-text',   // label element — check textContent for " price" or " size"
-  inputField: '.okui-input-input', // the actual <input> element inside .okui-input
-
-  // ── DIRECTION TABS (Buy/Sell or Open/Close) ─────────────────────────────────
-  // Segmented control tabs for trade direction.
-  // Text content determines which: "Buy"/"Sell" (one-way) or "Open"/"Close" (hedge).
-  // Use text-content matching to click the correct tab.
-  directionTab: '.okui-tabs-pane-segmented[role="tab"]',
-  activeDirectionTab: '.okui-tabs-pane-segmented-active',
+  // Price input: ancestor has .price-input class on form-item
+  // Amount input: the other .okui-input-input in the form (not inside .price-input)
+  priceInputContainer: '.price-input',
+  inputField: '.okui-input-input',
 
   // ── ORDER TYPE TABS (Limit / Market / TP-SL) ────────────────────────────────
-  // Underline-style tabs for order type.
-  // Text content: "Limit", "Market", "TP/SL"
-  // Use text-content matching to click the correct tab.
-  orderTypeTab: '.okui-tabs-pane-underline[role="tab"]',
-  activeOrderTypeTab: '.okui-tabs-pane-underline-active',
+  // Verified: .okui-tabs-pane-spacing with role="tab", text "Limit"/"Market"/"TP/SL"
+  orderTypeTab: '.okui-tabs-pane-spacing[role="tab"]',
+
+  // ── SUBMIT BUTTONS ──────────────────────────────────────────────────────────
+  // Verified: In one-way mode, Buy/Sell ARE the submit buttons (no separate direction tabs)
+  // Buy (Long): button.okui-positivebutton
+  // Sell (Short): button.okui-negativebutton
+  submitBuy: 'button.okui-positivebutton',
+  submitSell: 'button.okui-negativebutton',
+
+  // ── DIRECTION TABS (hedge mode only) ────────────────────────────────────────
+  // In one-way mode these don't exist. In hedge mode: Open/Close segmented tabs (unverified)
+  directionTab: '.okui-tabs-pane-segmented[role="tab"]',
 
   // ── BALANCE ─────────────────────────────────────────────────────────────────
-  // data-testid is stable and preferred over hash-suffixed class names.
-  // "max-asset" element text: "Available 1,234.56 USDT" — parse the number.
+  // Verified: data-testid stable. Text: "Available6,996.26 USDT"
   availableBalance: '[data-testid="max-asset"]',
-  // "max-trade" element text: "Max buy -- BTC" (spot) or "Max long -- Contracts" (futures).
-  // Inner spans: .index_text__* for label, .index_value__* for value — but class hashes are NOT stable.
-  // Parse the numeric portion from maxTrade.textContent directly.
   maxTrade: '[data-testid="max-trade"]',
 
   // ── PERCENTAGE SLIDER ───────────────────────────────────────────────────────
-  // Slider percentage quick-select nodes (0%, 25%, 50%, 75%, 100%).
-  // Click the node container; text content is inside the nested span.
+  // Verified: 5 nodes (0%/25%/50%/75%/100%)
   sliderNode: '.okui-slider-mark-node',
   sliderNodeText: '.okui-slider-mark-node-text',
 
+  // ── LAST PRICE ──────────────────────────────────────────────────────────────
+  // Verified: span.last shows last traded price (e.g. "71,704.6")
+  lastPrice: 'span.last',
+
   // ── ORDER BOOK ──────────────────────────────────────────────────────────────
-  // Best bid/ask selectors need a logged-in session to fully verify.
-  // Using structural best-guess; update after verifying on logged-in page.
-  // Strategy: find order book container, then first bid/ask price row.
-  bestBid: '[class*="orderBook"] [class*="bid"]:first-child [class*="price"]',
-  bestAsk: '[class*="orderBook"] [class*="ask"]:first-child [class*="price"]',
+  // Order book is CANVAS-rendered — individual bid/ask rows NOT in DOM.
+  // Best bid/ask cannot be read from DOM. Use lastPrice as proxy.
+  // Tick size shown in ladder: div with class containing "ladderSelectWrap"
+  orderBookContainer: '.order-book-box',
 
-  // ── OPEN ORDERS ─────────────────────────────────────────────────────────────
-  // Order table rows — needs logged-in session to fully verify.
-  // Strategy: find rows in the current orders / open orders panel.
-  orderRow: '[class*="openOrders"] [class*="orderRow"], [class*="currentOrders"] tr[class*="row"]',
+  // ── OPEN ORDERS TABLE ───────────────────────────────────────────────────────
+  // Verified: standard table inside .order-table-box
+  // Data rows: tr.okui-table-row (skip tr[aria-hidden="true"] measure rows)
+  orderRow: '.order-table-box .okui-table-row:not([aria-hidden="true"])',
 
-  // Cancel button within an order row — needs logged-in session to verify.
-  // Fallback: find button with text "Cancel" within the row.
-  cancelButton: '[class*="cancelBtn"], button[aria-label*="Cancel"]',
+  // ── CANCEL BUTTONS ──────────────────────────────────────────────────────────
+  // Verified: "Cancel all" = button.cancel-all, per-row "Cancel" = button.btn-fill-grey
+  cancelAllButton: 'button.cancel-all',
+  cancelButton: 'button.btn-fill-grey',
 
-  // Cancel all orders button — needs logged-in session to verify.
-  // Fallback: text-content search for "Cancel All" in cancelAllOrders().
-  cancelAllButton: '[data-testid="cancel-all-orders"], button[class*="cancelAll"]',
-
+  // ── CHASE BUTTON ─────────────────────────────────────────────────────────────
   // Chase button on unfilled limit orders — needs logged-in session to verify.
+  // actions.js uses this; fallback to text-content search if not found.
   chaseButton: '[data-testid="chase-order"], button[class*="chase"], [aria-label*="Chase"]',
 
   // ── POSITION (futures) ──────────────────────────────────────────────────────
-  // Position panel — needs logged-in session to fully verify.
-  // Strategy: find rows in the position table, match side column text for long/short.
-  positionSize: '[class*="positionTable"] [class*="positionSize"], [class*="positions"] [class*="size"]',
-  positionDirection: '[class*="positionTable"] [class*="side"], [class*="positions"] [class*="direction"]',
-
-  // ── LAST PRICE / TICK SIZE ──────────────────────────────────────────────────
-  // These need verification on logged-in page; structural selectors used as fallback.
-  lastPrice: '[class*="lastPrice"] [class*="value"], [class*="indexPrice"]',
-  tickSize: '[class*="instrumentInfo"] [class*="tickSize"], [data-testid="tick-size"]',
+  // Position panel needs verification when position is open.
+  // Bottom tab "Open positions" shows count. Table structure likely same as orders.
+  positionRow: '.order-table-box .okui-table-row:not([aria-hidden="true"])',
 };

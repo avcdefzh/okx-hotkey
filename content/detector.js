@@ -7,8 +7,8 @@
  *   - futures: /trade-futures/
  *
  * Trading modes (futures/swap only):
- *   - one-way: direction tabs show "Buy" / "Sell"
- *   - hedge:   direction tabs show "Open" / "Close"
+ *   - one-way: Buy/Sell submit buttons exist (button.okui-positivebutton / .okui-negativebutton)
+ *   - hedge:   Open/Close segmented direction tabs exist (.okui-tabs-pane-segmented[role="tab"])
  */
 
 window.OKXDetector = (() => {
@@ -27,25 +27,32 @@ window.OKXDetector = (() => {
   }
 
   /**
-   * Detect trading mode by inspecting direction tab text content.
+   * Detect trading mode by inspecting the form for direction tabs or submit buttons.
    *
-   * Verified DOM: direction tabs use .okui-tabs-pane-segmented[role="tab"].
-   *   - Hedge mode:   tabs read "Open" and "Close"
-   *   - One-way mode: tabs read "Buy" and "Sell"
+   * Verified DOM:
+   *   - Hedge mode:   .okui-tabs-pane-segmented[role="tab"] with text "Open"/"Close" exist
+   *   - One-way mode: button.okui-positivebutton / button.okui-negativebutton exist in form
    *
-   * This is more reliable than checking for a hedge-mode indicator element
-   * because OKX does not expose a dedicated hedge-mode class at the form level.
+   * In one-way mode there are NO direction tabs. The Buy/Sell buttons ARE the direction.
    *
    * @returns {'hedge'|'one-way'|'unknown'}
    */
   function detectTradingMode() {
-    const directionTabs = document.querySelectorAll(S.directionTab);
-    if (!directionTabs.length) return 'unknown';
+    // Check for hedge mode: segmented Open/Close tabs
+    const segmentedTabs = document.querySelectorAll(S.directionTab);
+    if (segmentedTabs.length > 0) {
+      for (const tab of segmentedTabs) {
+        const text = tab.textContent.trim().toLowerCase();
+        if (text === 'open' || text === 'close') return 'hedge';
+      }
+    }
 
-    for (const tab of directionTabs) {
-      const text = tab.textContent.trim().toLowerCase();
-      if (text === 'open' || text === 'close') return 'hedge';
-      if (text === 'buy' || text === 'sell') return 'one-way';
+    // Check for one-way mode: Buy/Sell submit buttons exist
+    const form = document.querySelector(S.orderForm);
+    if (form) {
+      const buyBtn = form.querySelector(S.submitBuy);
+      const sellBtn = form.querySelector(S.submitSell);
+      if (buyBtn || sellBtn) return 'one-way';
     }
 
     return 'unknown';

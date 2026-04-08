@@ -82,29 +82,16 @@ window.OKXActions = (() => {
    */
   async function marketSell(ctx) {
     requirePage(ctx, 'any');
+    const balance = R.readAvailableBalance();
+    if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
 
-    let amount;
-    if (ctx.pageType === 'futures') {
-      const pos = R.readPosition();
-      if (!pos.size || pos.size <= 0) throw new Error('No open position to sell');
-      amount = calcAmount(pos.size, ctx.percentage);
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-    }
-
-    if (amount <= 0) throw new Error('Calculated sell amount is 0');
+    const amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+    if (amount <= 0) throw new Error(`Calculated amount is 0 (balance: ${balance}, pct: ${ctx.percentage}%)`);
 
     await E.selectMarketOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      const pos = R.readPosition();
-      if (pos.direction === 'long') {
-        await E.selectDirection('close_long', ctx.tradingMode);
-      } else {
-        await E.selectDirection('close_short', ctx.tradingMode);
-      }
+      await E.selectDirection('open_short', ctx.tradingMode);
     } else {
       await E.selectDirection('sell', ctx.tradingMode);
     }
@@ -147,25 +134,16 @@ window.OKXActions = (() => {
    */
   async function limitSell(ctx) {
     requirePage(ctx, 'any');
+    const balance = R.readAvailableBalance();
+    if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
 
-    let amount;
-    if (ctx.pageType === 'futures') {
-      const pos = R.readPosition();
-      if (!pos.size || pos.size <= 0) throw new Error('No open position to sell');
-      amount = calcAmount(pos.size, ctx.percentage);
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-    }
-
-    if (amount <= 0) throw new Error('Calculated sell amount is 0');
+    const amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+    if (amount <= 0) throw new Error('Calculated amount is 0');
 
     await E.selectLimitOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      const pos = R.readPosition();
-      await E.selectDirection(pos.direction === 'long' ? 'close_long' : 'close_short', ctx.tradingMode);
+      await E.selectDirection('open_short', ctx.tradingMode);
     } else {
       await E.selectDirection('sell', ctx.tradingMode);
     }
@@ -216,17 +194,11 @@ window.OKXActions = (() => {
    */
   async function tickSell(ctx) {
     requirePage(ctx, 'any');
+    const balance = R.readAvailableBalance();
+    if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
 
-    let amount;
-    if (ctx.pageType === 'futures') {
-      const pos = R.readPosition();
-      if (!pos.size || pos.size <= 0) throw new Error('No open position to sell');
-      amount = calcAmount(pos.size, ctx.percentage);
-    } else {
-      const balance = R.readAvailableBalance();
-      if (isNaN(balance) || balance <= 0) throw new Error('Available balance not readable');
-      amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
-    }
+    const amount = calcAmount(balance, ctx.percentage, 6, ctx.seedCap || 0);
+    if (amount <= 0) throw new Error('Calculated amount is 0');
 
     const bestAsk = R.readBestAsk();
     if (isNaN(bestAsk)) throw new Error('Best ask price not readable');
@@ -235,13 +207,10 @@ window.OKXActions = (() => {
     const tick = isNaN(tickSize) ? 0.01 : tickSize;
     const price = parseFloat((bestAsk - tick).toFixed(String(tick).split('.')[1]?.length || 2));
 
-    if (amount <= 0) throw new Error('Calculated sell amount is 0');
-
     await E.selectLimitOrder();
 
     if (ctx.pageType === 'futures' && ctx.tradingMode === 'hedge') {
-      const pos = R.readPosition();
-      await E.selectDirection(pos.direction === 'long' ? 'close_long' : 'close_short', ctx.tradingMode);
+      await E.selectDirection('open_short', ctx.tradingMode);
     } else {
       await E.selectDirection('sell', ctx.tradingMode);
     }

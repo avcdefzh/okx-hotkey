@@ -4,10 +4,10 @@
  * Reads:
  *   - Available balance (USDT or asset)
  *   - Current position size + direction (futures)
- *   - Best bid / best ask from order book
- *   - Tick size for the instrument
+ *   - Last price (order book is canvas-rendered; no DOM bid/ask rows)
+ *   - Tick size derived from last price decimal places
  *   - Open orders list
- *   - Current price input value
+ *   - Current price/amount input values
  */
 
 window.OKXReader = (() => {
@@ -27,31 +27,6 @@ window.OKXReader = (() => {
   }
 
   /**
-   * Find a specific input inside the order form by its accessibility label text.
-   *
-   * OKX uses .okui-a11y-text labels to identify inputs semantically.
-   * The price input has label text " price"; the size input has " size".
-   * The label sits inside the same .okui-input container as the actual input.
-   *
-   * @param {Element} formEl — The order form root element
-   * @param {string} labelText — Exact label text to match (e.g. "price" or "size")
-   * @returns {HTMLInputElement|null}
-   */
-  function findInputByLabel(formEl, labelText) {
-    const labels = formEl.querySelectorAll(S.inputLabel);
-    for (const label of labels) {
-      if (label.textContent.trim().toLowerCase() === labelText.toLowerCase()) {
-        // The input lives in the closest .okui-input ancestor of the label
-        const container = label.closest('.okui-input');
-        if (container) {
-          return container.querySelector(S.inputField);
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
    * Get the order form element.
    * @returns {Element|null}
    */
@@ -60,9 +35,35 @@ window.OKXReader = (() => {
   }
 
   /**
+   * Find the price input inside the order form.
+   * Verified: price input lives inside a container with class .price-input.
+   * @param {Element} formEl
+   * @returns {HTMLInputElement|null}
+   */
+  function findPriceInput(formEl) {
+    const container = formEl.querySelector(S.priceInputContainer);
+    return container ? container.querySelector(S.inputField) : null;
+  }
+
+  /**
+   * Find the amount/size input inside the order form.
+   * Verified: all .okui-input-input fields except the one inside .price-input.
+   * @param {Element} formEl
+   * @returns {HTMLInputElement|null}
+   */
+  function findAmountInput(formEl) {
+    const priceInput = findPriceInput(formEl);
+    const inputs = formEl.querySelectorAll(S.inputField);
+    for (const input of inputs) {
+      if (input !== priceInput) return input;
+    }
+    return null;
+  }
+
+  /**
    * Read available balance from [data-testid="max-asset"].
    *
-   * Verified DOM text format: "Available 1,234.56 USDT"
+   * Verified DOM text format: "Available6,996.26 USDT"
    * We strip everything non-numeric (except decimal/negative) to parse the number.
    *
    * @returns {number} Available balance, NaN on failure
@@ -103,78 +104,84 @@ window.OKXReader = (() => {
   /**
    * Read current position data (futures only).
    *
-   * Position table needs a logged-in session to fully verify.
-   * Uses structural selectors from S.positionSize / S.positionDirection.
+   * Position table uses same .order-table-box structure as open orders.
    * Direction is inferred from text content of the side column.
    *
    * @returns {{ size: number, direction: 'long'|'short'|null }}
    */
   function readPosition() {
-    const sizeEl = document.querySelector(S.positionSize);
-    const dirEl = document.querySelector(S.positionDirection);
+    const rows = document.querySelectorAll(S.positionRow);
+    if (!rows.length) return { size: 0, direction: null };
 
-    if (!sizeEl) {
-      return { size: 0, direction: null };
-    }
-
-    const size = parseFloat(sizeEl.textContent.trim().replace(/,/g, '').replace(/[^\d.-]/g, ''));
-    const dirText = dirEl ? dirEl.textContent.trim().toLowerCase() : '';
+    // Use the first row as a heuristic; full implementation requires column index knowledge
+    const firstRow = rows[0];
+    const text = firstRow.textContent.trim().toLowerCase();
     let direction = null;
-
-    if (dirText.includes('long') || dirText.includes('buy') || dirText.includes('多')) {
+    if (text.includes('long') || text.includes('buy') || text.includes('多')) {
       direction = 'long';
-    } else if (dirText.includes('short') || dirText.includes('sell') || dirText.includes('空')) {
+    } else if (text.includes('short') || text.includes('sell') || text.includes('空')) {
       direction = 'short';
     }
 
+    const match = text.match(/[\d,]+\.?\d*/);
+    const size = match ? parseFloat(match[0].replace(/,/g, '')) : 0;
     return { size: isNaN(size) ? 0 : Math.abs(size), direction };
   }
 
   /**
-   * Read best bid price from order book.
-   * Needs logged-in session to fully verify; uses structural selector fallback.
-   * @returns {number} Best bid price, NaN on failure
+   * Read last traded price from span.last.
+   * Verified: span.last contains the last trade price (e.g. "71,704.6").
+   * @returns {number} Last price, NaN on failure
+   */
+  function readLastPrice() {
+    const el = document.querySelector(S.lastPrice);
+    if (!el) return NaN;
+    const text = el.textContent.trim().replace(/,/g, '');
+    return parseFloat(text);
+  }
+
+  /**
+   * Read best bid price.
+   * Order book is canvas-rendered; individual bid rows are NOT in the DOM.
+   * Uses last price as proxy.
+   * @returns {number}
    */
   function readBestBid() {
-    return parseNumericEl(S.bestBid);
+    // Order book is canvas-rendered; use last price as best bid proxy
+    return readLastPrice();
   }
 
   /**
-   * Read best ask price from order book.
-   * Needs logged-in session to fully verify; uses structural selector fallback.
-   * @returns {number} Best ask price, NaN on failure
+   * Read best ask price.
+   * Order book is canvas-rendered; individual ask rows are NOT in the DOM.
+   * Uses last price as proxy.
+   * @returns {number}
    */
   function readBestAsk() {
-    return parseNumericEl(S.bestAsk);
+    // Order book is canvas-rendered; use last price as best ask proxy
+    return readLastPrice();
   }
 
   /**
-   * Attempt to read tick size from instrument info.
-   * Falls back to deriving it from order book price decimal precision.
-   * @returns {number} Tick size (e.g. 0.01), NaN on failure
+   * Derive tick size from the decimal precision of the last price.
+   * Example: "71,704.6" → 1 decimal → tick size = 0.1
+   * @returns {number} Tick size (e.g. 0.1), falls back to 0.1 if unreadable
    */
   function readTickSize() {
-    const el = document.querySelector(S.tickSize);
-    if (el) {
-      const val = parseFloat(el.textContent.trim().replace(/,/g, ''));
-      if (!isNaN(val) && val > 0) return val;
+    const el = document.querySelector(S.lastPrice);
+    if (!el) return 0.1; // safe fallback
+    const text = el.textContent.trim();
+    const dotIdx = text.indexOf('.');
+    if (dotIdx !== -1) {
+      const decimals = text.replace(/,/g, '').length - text.replace(/,/g, '').indexOf('.') - 1;
+      return Math.pow(10, -decimals);
     }
-    // Fallback: derive from best bid decimal places
-    const bidEl = document.querySelector(S.bestBid);
-    if (bidEl) {
-      const text = bidEl.textContent.trim();
-      const dotIdx = text.indexOf('.');
-      if (dotIdx !== -1) {
-        const decimals = text.length - dotIdx - 1;
-        return Math.pow(10, -decimals);
-      }
-    }
-    return NaN;
+    return 1; // no decimals = integer prices
   }
 
   /**
    * Read all open order rows from the orders table.
-   * Needs logged-in session to fully verify.
+   * Verified: .order-table-box .okui-table-row:not([aria-hidden="true"])
    * @returns {Element[]} Array of order row DOM elements
    */
   function readOrderRows() {
@@ -183,43 +190,38 @@ window.OKXReader = (() => {
 
   /**
    * Read current price input value (for limit orders).
-   *
-   * Uses findInputByLabel to locate the price input by its accessibility label.
-   * The price input has label text " price" (with leading space, as scraped).
-   *
+   * Verified: price input is inside .price-input container.
    * @returns {number}
    */
   function readPriceInput() {
     const form = getOrderForm();
     if (!form) return NaN;
-    // OKX label text is " price" (with leading space from the span content)
-    const input = findInputByLabel(form, 'price');
+    const input = findPriceInput(form);
     if (!input) return NaN;
     return parseFloat(input.value.replace(/,/g, ''));
   }
 
   /**
    * Read current amount/size input value.
-   *
-   * Uses findInputByLabel to locate the size input by its accessibility label.
-   * The size input has label text " size" (with leading space, as scraped).
-   *
+   * Verified: amount input is the .okui-input-input not inside .price-input.
    * @returns {number}
    */
   function readAmountInput() {
     const form = getOrderForm();
     if (!form) return NaN;
-    const input = findInputByLabel(form, 'size');
+    const input = findAmountInput(form);
     if (!input) return NaN;
     return parseFloat(input.value.replace(/,/g, ''));
   }
 
   return {
-    findInputByLabel,
+    findPriceInput,
+    findAmountInput,
     getOrderForm,
     readAvailableBalance,
     readMaxTrade,
     readPosition,
+    readLastPrice,
     readBestBid,
     readBestAsk,
     readTickSize,
