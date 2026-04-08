@@ -50,6 +50,17 @@ window.OKXActions = (() => {
   }
 
   /**
+   * Extract the current trading pair from URL.
+   * e.g., /trade-futures/eth-usdt → "ETHUSDT"
+   * @returns {string|null}
+   */
+  function getCurrentPairFromUrl() {
+    const match = window.location.pathname.match(/\/trade-(?:spot|futures|swap)\/([a-z0-9]+)-([a-z0-9]+)/i);
+    if (!match) return null;
+    return (match[1] + match[2]).toUpperCase();
+  }
+
+  /**
    * Convert USDT amount to the input's expected unit if needed.
    * @param {number} usdtAmount - Amount in USDT
    * @returns {number} Amount in the input's unit
@@ -157,7 +168,15 @@ window.OKXActions = (() => {
     // Position table lives in .position-box (NOT .order-table-box which is for orders)
     if (!rows.length) return { size: 0, direction: null, isProfit: null };
 
+    const currentPair = getCurrentPairFromUrl();
+
     for (const row of rows) {
+      // Filter by current trading pair
+      if (currentPair) {
+        const rowText = row.textContent.toUpperCase().replace(/[-\/\s]/g, '');
+        if (!rowText.includes(currentPair)) continue;
+      }
+
       const cells = [...row.querySelectorAll('td')];
 
       // Determine row direction from cell[1] span class (hedge mode):
