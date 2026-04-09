@@ -85,4 +85,11 @@ window.OKX_SELECTORS = {
   // with positive-pl (long) or negative-pl (short) class
   positionLongClass: '.positive-pl',
   positionShortClass: '.negative-pl',
+
+  // ── TP/SL (Take-Profit / Stop-Loss) ─────────────────────────────────────
+  // Futures: hash-suffixed class [class*="stopSelector"], aria-label on inputs.
+  // Spot: .place-order-stop-selector class, labelbasic attribute on inputs.
+  tpslCheckbox: '.place-order-stop-selector .okui-checkbox-input, [class*="stopSelector"] .okui-checkbox-input',
+  tpPriceInput: 'input[aria-label="tpOrdPx"], input[labelbasic="TP trigger price"]',
+  slPriceInput: 'input[aria-label="slTriggerPx"], input[labelbasic="SL trigger price"]',
 };

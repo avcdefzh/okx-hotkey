@@ -25,6 +25,26 @@
   let detectorState = { pageType: 'unknown', tradingMode: 'unknown', ready: false };
   let hotkeyListener = null;
   let donationObserver = null;
+  let detectRetryInterval = null;
+
+  function startDetectRetry() {
+    if (detectRetryInterval) clearInterval(detectRetryInterval);
+    detectRetryInterval = setInterval(() => {
+      const fresh = OKXDetector.getState();
+      if (fresh.tradingMode !== 'unknown') {
+        detectorState = fresh;
+        clearInterval(detectRetryInterval);
+        detectRetryInterval = null;
+        console.log('[OKX Hotkey] Re-detected:', detectorState);
+      }
+    }, 500);
+    setTimeout(() => {
+      if (detectRetryInterval) {
+        clearInterval(detectRetryInterval);
+        detectRetryInterval = null;
+      }
+    }, 10000);
+  }
 
   // ── Settings loading ──────────────────────────────────────────────────────
 
@@ -88,7 +108,9 @@
       general: {
         soundEnabled: true,
         seedCap: 0,
-        donationMode: false
+        donationMode: false,
+        tpPct: 0,
+        slPct: 0
       }
     };
   }
@@ -222,7 +244,9 @@
         tradingMode: detectorState.tradingMode,
         percentage:  action.percentage,
         ticks:       action.ticks || 100,
-        seedCap:     settings.general.seedCap || 0
+        seedCap:     settings.general.seedCap || 0,
+        tpPct:       settings.general.tpPct || 0,
+        slPct:       settings.general.slPct || 0
       };
 
       const result = await OKXActions.execute(action.type, ctx);
@@ -330,6 +354,9 @@
       lastUrl = currentUrl;
       console.log('[OKX Hotkey] SPA navigation detected, re-detecting page...');
       detectorState = OKXDetector.getState();
+      if (detectorState.tradingMode === 'unknown' && detectorState.pageType !== 'unknown') {
+        startDetectRetry();
+      }
       // Re-apply donation mode after navigation
       if (settings && settings.general.donationMode) {
         setTimeout(applyDonationMode, 500);
@@ -347,6 +374,11 @@
 
     detectorState = OKXDetector.getState();
     console.log('[OKX Hotkey] Detected:', detectorState);
+
+    // Retry detection if form hasn't loaded yet
+    if (detectorState.tradingMode === 'unknown' && detectorState.pageType !== 'unknown') {
+      startDetectRetry();
+    }
 
     attachKeyListener();
     syncDonationMode();

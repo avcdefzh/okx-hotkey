@@ -71,7 +71,9 @@ const SOUND_SLOTS = {
 const DEFAULT_GENERAL = {
   soundEnabled: true,
   seedCap: 0,
-  donationMode: false
+  donationMode: false,
+  tpPct: 0,
+  slPct: 0
 };
 
 const DEFAULT_ACTIONS = [
@@ -620,7 +622,9 @@ function collectGeneral() {
   return {
     soundEnabled:  $('sound-enabled').checked,
     seedCap:       parseFloat($('seed-cap').value) || 0,
-    donationMode:  $('donation-mode').checked
+    donationMode:  $('donation-mode').checked,
+    tpPct:         parseFloat($('tp-pct').value) || 0,
+    slPct:         parseFloat($('sl-pct').value) || 0
   };
 }
 
@@ -630,6 +634,8 @@ function populateGeneral(general) {
   $('seed-cap').value        = general.seedCap !== undefined ? general.seedCap : 0;
   $('sound-enabled').checked = !!general.soundEnabled;
   $('donation-mode').checked = !!general.donationMode;
+  $('tp-pct').value          = general.tpPct !== undefined ? general.tpPct : 0;
+  $('sl-pct').value          = general.slPct !== undefined ? general.slPct : 0;
 }
 
 // ── Storage operations ────────────────────────────────────────────────────────

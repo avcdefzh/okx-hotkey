@@ -301,7 +301,7 @@ window.OKXExecutor = (() => {
    * Retries up to maxAttempts times with interval ms between each.
    * Returns the button element, or throws if not found.
    */
-  async function waitForConfirmButton(maxAttempts = 10, interval = 80) {
+  async function waitForConfirmButton(maxAttempts = 20, interval = 80) {
     for (let i = 0; i < maxAttempts; i++) {
       // Scope search to modal/dialog containers first
       const modals = document.querySelectorAll('.okui-dialog, .okui-modal, [class*="modal"], [class*="dialog"], [role="dialog"]');
@@ -410,6 +410,45 @@ window.OKXExecutor = (() => {
     throw new Error(`하단 탭을 찾을 수 없습니다: ${tabText}`);
   }
 
+  // ── TP/SL helpers ─────────────────────────────────────────────────────────
+
+  async function ensureTPSLEnabled() {
+    const panel = document.querySelector(S.orderForm) || document;
+    if (panel.querySelector(S.tpPriceInput)) return true;
+    const checkbox = panel.querySelector(S.tpslCheckbox);
+    if (!checkbox) {
+      console.warn('[OKX Hotkey] TP/SL checkbox not found');
+      return false;
+    }
+    if (!checkbox.checked) {
+      checkbox.click();
+    }
+    for (let i = 0; i < 15; i++) {
+      await delay(80);
+      if (panel.querySelector(S.tpPriceInput)) return true;
+    }
+    console.warn('[OKX Hotkey] TP/SL inputs did not appear after checkbox click');
+    return false;
+  }
+
+  async function fillTPPrice(price) {
+    const panel = document.querySelector(S.orderForm) || document;
+    const input = panel.querySelector(S.tpPriceInput);
+    if (!input) throw new Error('TP 입력란을 찾을 수 없습니다');
+    input.focus();
+    setInputValue(input, price);
+    await delay(50);
+  }
+
+  async function fillSLPrice(price) {
+    const panel = document.querySelector(S.orderForm) || document;
+    const input = panel.querySelector(S.slPriceInput);
+    if (!input) throw new Error('SL 입력란을 찾을 수 없습니다');
+    input.focus();
+    setInputValue(input, price);
+    await delay(50);
+  }
+
   return {
     setInputValue,
     delay,
@@ -431,5 +470,8 @@ window.OKXExecutor = (() => {
     cancelAllOrders,
     ensureBottomTab,
     waitForConfirmButton,
+    ensureTPSLEnabled,
+    fillTPPrice,
+    fillSLPrice,
   };
 })();

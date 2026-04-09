@@ -731,3 +731,22 @@ body {
 .action-desc.show {
   display: block;
 }
+
+/* ── TP/SL inputs ─────────────────────────────────────────────── */
+
+.tpsl-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input--tiny {
+  width: 70px;
+  text-align: right;
+  padding: 6px 8px;
+}
+
+.tpsl-sep {
+  color: var(--text-muted);
+  font-size: 14px;
+}

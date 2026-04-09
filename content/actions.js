@@ -46,7 +46,10 @@ window.OKXActions = (() => {
     if (!el) return 'USDT';
     const text = el.textContent.trim();
     const match = text.match(/[\d.]\s*([A-Za-z]{2,6})(?:\s|$)/);
-    return match ? match[1].toUpperCase() : 'USDT';
+    if (!match) return 'USDT';
+    // OKX "Max buy/sell" label can concat with unit (e.g. "ETHMax" → "ETHMAX")
+    const unit = match[1].toUpperCase().replace(/(?:MAX|MIN)$/, '');
+    return unit || 'USDT';
   }
 
   /**
@@ -127,6 +130,49 @@ window.OKXActions = (() => {
     if (ctx.pageType === 'unknown') {
       throw new Error('OKX 트레이딩 페이지를 인식하지 못했습니다');
     }
+  }
+
+  /**
+   * Apply TP/SL prices to the order form before submission.
+   * Only called for new entries (soundKey === 'default') on futures.
+   * TP/SL are calculated as percentage distance from entry price.
+   *
+   * @param {object} ctx — action context with tpPct, slPct
+   * @param {'buy'|'sell'} side — trade side (buy=long, sell=short)
+   * @param {number} entryPrice — expected entry price
+   */
+  async function applyTPSL(ctx, side, entryPrice) {
+    if (ctx.pageType !== 'futures' && ctx.pageType !== 'spot') return;
+    if ((ctx.tpPct || 0) <= 0 && (ctx.slPct || 0) <= 0) return;
+    if (!entryPrice || isNaN(entryPrice) || entryPrice <= 0) return;
+
+    const ok = await E.ensureTPSLEnabled();
+    if (!ok) {
+      console.warn('[OKX Hotkey] TP/SL 활성화 실패, 주문은 TP/SL 없이 진행');
+      return;
+    }
+    await E.delay(50);
+
+    const isLong = side === 'buy';
+    const tickSize = R.readTickSize();
+    const tick = isNaN(tickSize) ? 0.01 : tickSize;
+    const decimals = tick >= 1 ? 0 : (String(tick).split('.')[1]?.length || 2);
+
+    if ((ctx.tpPct || 0) > 0) {
+      const distance = entryPrice * (ctx.tpPct / 100);
+      const tpPrice = isLong ? entryPrice + distance : entryPrice - distance;
+      await E.fillTPPrice(parseFloat(tpPrice.toFixed(decimals)));
+    }
+
+    if ((ctx.tpPct || 0) > 0 && (ctx.slPct || 0) > 0) await E.delay(50);
+
+    if ((ctx.slPct || 0) > 0) {
+      const distance = entryPrice * (ctx.slPct / 100);
+      const slPrice = isLong ? entryPrice - distance : entryPrice + distance;
+      await E.fillSLPrice(parseFloat(slPrice.toFixed(decimals)));
+    }
+
+    console.log('[OKX Hotkey] applyTPSL:', { side, entryPrice, tpPct: ctx.tpPct, slPct: ctx.slPct, isLong });
   }
 
   /**
@@ -255,6 +301,7 @@ window.OKXActions = (() => {
       await E.selectDirection('buy', ctx.tradingMode);
     }
     await E.fillAmount(amount);
+    if (soundKey === 'default') await applyTPSL(ctx, 'buy', R.readLastPrice());
     await E.submitBuy();
     return { message: `시장가 매수 ${ctx.percentage}% (${amount})`, soundKey };
   }
@@ -288,6 +335,7 @@ window.OKXActions = (() => {
       await E.selectDirection('sell', ctx.tradingMode);
     }
     await E.fillAmount(amount);
+    if (soundKey === 'default') await applyTPSL(ctx, 'sell', R.readLastPrice());
     await E.submitSell();
     return { message: `시장가 매도 ${ctx.percentage}% (${amount})`, soundKey };
   }
@@ -323,6 +371,7 @@ window.OKXActions = (() => {
       await E.selectDirection('buy', ctx.tradingMode);
     }
     await E.fillAmount(amount);
+    if (soundKey === 'default') await applyTPSL(ctx, 'buy', limitPrice);
     await E.submitBuy();
     return { message: `지정가 매수 ${ctx.percentage}% (${amount})`, soundKey };
   }
@@ -358,6 +407,7 @@ window.OKXActions = (() => {
       await E.selectDirection('sell', ctx.tradingMode);
     }
     await E.fillAmount(amount);
+    if (soundKey === 'default') await applyTPSL(ctx, 'sell', limitPrice);
     await E.submitSell();
     return { message: `지정가 매도 ${ctx.percentage}% (${amount})`, soundKey };
   }
@@ -399,6 +449,7 @@ window.OKXActions = (() => {
     }
     await E.fillPrice(price);
     await E.fillAmount(amount);
+    if (soundKey === 'default') await applyTPSL(ctx, 'buy', price);
     await E.submitBuy();
     return { message: `틱 매수 ${ctx.percentage}% @ ${price}`, soundKey };
   }
@@ -440,6 +491,7 @@ window.OKXActions = (() => {
     }
     await E.fillPrice(price);
     await E.fillAmount(amount);
+    if (soundKey === 'default') await applyTPSL(ctx, 'sell', price);
     await E.submitSell();
     return { message: `틱 매도 ${ctx.percentage}% @ ${price}`, soundKey };
   }
@@ -508,6 +560,8 @@ window.OKXActions = (() => {
     if (confirmBtn) {
       confirmBtn.click();
       await E.delay(100);
+    } else {
+      throw new Error('확인 대화상자를 찾지 못했습니다. 수동으로 확인하세요.');
     }
 
     return { message: '전체 포지션 청산', soundKey: profitKey };
@@ -559,6 +613,8 @@ window.OKXActions = (() => {
     if (confirmBtn) {
       confirmBtn.click();
       await E.delay(100);
+    } else {
+      throw new Error('확인 대화상자를 찾지 못했습니다. 수동으로 확인하세요.');
     }
 
     return { message: '포지션 반전 완료', soundKey: 'default' };
