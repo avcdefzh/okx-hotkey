@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TeamMelona OKX Hotkey</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header__logo">⚡ TeamMelona OKX Hotkey</div>
+      <div class="header__status" id="status-badge">
+        <span class="status-dot"></span>
+        <span class="status-text">연결 확인 중...</span>
+      </div>
+    </header>
+
+    <!-- Page info bar -->
+    <div class="page-info" id="page-info" style="display:none">
+      <span id="page-type-label"></span>
+      <span id="trading-mode-label"></span>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn" id="tab-hotkey" data-tab="hotkey">단축키 액션</button>
+      <button class="tab-btn" id="tab-license" data-tab="license">인증</button>
+    </div>
+
+    <!-- Tab: 단축키 액션 -->
+    <div class="tab-content" id="tab-content-hotkey">
+
+      <!-- Lock message (shown when not authenticated) -->
+      <div class="lock-notice" id="lock-notice" style="display:none">
+        <span class="lock-icon">🔒</span>
+        <p>인증이 필요합니다. 인증 탭에서 텔레그램 인증을 완료해주세요.</p>
+      </div>
+
+      <!-- Actions list -->
+      <section class="section">
+        <div class="section__header">
+          <div class="section__title">단축키 액션</div>
+          <button class="btn btn--add" id="btn-add-action">+ 액션 추가</button>
+        </div>
+        <div class="actions-list" id="actions-list">
+          <!-- Populated by popup.js -->
+        </div>
+        <div class="actions-empty" id="actions-empty" style="display:none">
+          액션이 없습니다. "+ 액션 추가" 버튼으로 추가하세요.
+        </div>
+      </section>
+
+      <!-- Action type picker modal (hidden by default) -->
+      <div class="modal-backdrop" id="modal-backdrop" style="display:none">
+        <div class="modal">
+          <div class="modal__title">액션 유형 선택</div>
+          <div class="action-type-grid" id="action-type-grid">
+            <!-- Populated by popup.js -->
+          </div>
+          <button class="btn btn--secondary modal__cancel" id="modal-cancel">취소</button>
+        </div>
+      </div>
+
+      <!-- General settings -->
+      <section class="section">
+        <div class="section__header">
+          <div class="section__title">일반 설정</div>
+        </div>
+        <div class="general-settings">
+
+          <!-- Group A: 트레이딩 파라미터 -->
+          <div class="settings-group">
+            <div class="settings-group__label">트레이딩 파라미터</div>
+
+            <div class="setting-row">
+              <label class="setting-label" for="seed-cap">최대 운용 시드 <span class="setting-unit">USD</span></label>
+              <input
+                type="number"
+                id="seed-cap"
+                class="input input--small"
+                min="0"
+                step="1"
+                placeholder="0 = 전체 잔액"
+              />
+            </div>
+
+            <div class="setting-row">
+              <label class="setting-label">TP / SL <span class="setting-unit">%</span></label>
+              <div class="tpsl-inputs">
+                <input type="number" id="tp-pct" class="input input--tiny" min="0" step="0.1" placeholder="OFF" />
+                <span class="tpsl-sep">/</span>
+                <input type="number" id="sl-pct" class="input input--tiny" min="0" step="0.1" placeholder="OFF" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Group B: 앱 설정 -->
+          <div class="settings-group">
+            <div class="settings-group__label">앱 설정</div>
+
+            <div class="setting-row">
+              <label class="setting-label" for="sound-enabled">소리 활성화</label>
+              <label class="toggle">
+                <input type="checkbox" id="sound-enabled" />
+                <span class="toggle__track"></span>
+              </label>
+            </div>
+
+            <div class="setting-row">
+              <label class="setting-label" for="donation-mode">Donation 모드</label>
+              <label class="toggle">
+                <input type="checkbox" id="donation-mode" />
+                <span class="toggle__track"></span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Footer buttons -->
+      <div class="footer-actions">
+        <button class="btn btn--primary" id="btn-save">저장</button>
+      </div>
+
+      <!-- Feedback message -->
+      <div class="feedback" id="feedback" style="display:none"></div>
+
+    </div>
+
+    <!-- Tab: 인증 -->
+    <div class="tab-content" id="tab-content-license" style="display:none">
+      <div class="license-panel" id="license-panel">
+        <!-- Populated by popup.js license state machine -->
+      </div>
+    </div>
+
+  </div>
+
+  <script src="../config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
