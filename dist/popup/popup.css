@@ -350,7 +350,7 @@ body {
   transition: max-height 0.2s ease;
 }
 .card__sounds.is-open {
-  max-height: 44px;
+  max-height: 60px;
   border-top: 1px solid var(--border);
 }
 
@@ -732,6 +732,78 @@ body {
 
 .action-desc.show {
   display: block;
+}
+
+/* ── Profile tabs ───────────────────────────────────────────────── */
+
+.profile-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.profile-tab {
+  padding: 5px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  letter-spacing: 0.01em;
+}
+
+.profile-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.profile-tab.active {
+  background: rgba(88, 101, 242, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Settings select dropdown ───────────────────────────────────── */
+
+.settings-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 5px 7px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.settings-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* ── Global sound section ───────────────────────────────────────── */
+
+.global-sound-section .sounds-strip {
+  padding: 6px 0 2px;
+}
+
+/* ── Trading action global sound indicator ──────────────────────── */
+
+.global-sound-indicator {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 10px;
+  border-top: 1px solid var(--border);
 }
 
 /* ── TP/SL inputs ─────────────────────────────────────────────── */

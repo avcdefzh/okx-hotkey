@@ -42,7 +42,11 @@
       <!-- Actions list -->
       <section class="section">
         <div class="section__header">
-          <div class="section__title">단축키 액션</div>
+          <div class="profile-tabs">
+            <button class="profile-tab active" data-profile="btc">BTC선물</button>
+            <button class="profile-tab" data-profile="eth">ETH선물</button>
+            <button class="profile-tab" data-profile="other">기타</button>
+          </div>
           <button class="btn btn--add" id="btn-add-action">+ 액션 추가</button>
         </div>
         <div class="actions-list" id="actions-list">
@@ -88,8 +92,13 @@
             </div>
 
             <div class="setting-row">
-              <label class="setting-label">TP / SL <span class="setting-unit">%</span></label>
+              <label class="setting-label">TP / SL <span class="setting-unit" id="tpsl-unit">%</span></label>
               <div class="tpsl-inputs">
+                <select id="tpsl-mode" class="settings-select">
+                  <option value="pct">진입가 %</option>
+                  <option value="usdt">USDT 금액</option>
+                  <option value="seedPct">시드 %</option>
+                </select>
                 <input type="number" id="tp-pct" class="input input--tiny" min="0" step="0.1" placeholder="OFF" />
                 <span class="tpsl-sep">/</span>
                 <input type="number" id="sl-pct" class="input input--tiny" min="0" step="0.1" placeholder="OFF" />
@@ -115,6 +124,14 @@
                 <input type="checkbox" id="donation-mode" />
                 <span class="toggle__track"></span>
               </label>
+            </div>
+          </div>
+
+          <!-- Group C: 전역 사운드 설정 -->
+          <div class="settings-group global-sound-section" id="global-sound-section">
+            <div class="settings-group__label">전역 사운드 설정</div>
+            <div class="sounds-strip" id="global-sounds-strip">
+              <!-- Populated by popup.js -->
             </div>
           </div>
 
